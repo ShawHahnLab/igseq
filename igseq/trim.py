@@ -38,10 +38,21 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
     #### parse paths_input
     if len(paths_input) == 1 and Path(paths_input[0]).is_dir():
         # detect R1/R2 pairs
-        raise NotImplementedError # TODO
-    else:
+        path = Path(paths_input[0])
+        pairs = []
+        for fpr1, fpr2 in zip(path.glob("*.R1.fastq.gz"), path.glob("*.R2.fastq.gz")):
+            prefix1 = re.sub(r"\.R1\.fastq\.gz", "", fpr1.name)
+            prefix2 = re.sub(r"\.R2\.fastq\.gz", "", fpr2.name)
+            if prefix1 == "unassigned":
+                continue
+            if prefix1 != prefix2:
+                raise ValueError
+            pairs.append({"R1": fpr1, "R2": fpr2})
+    elif len(paths_input) == 2:
         # take R1/R2 as given
         pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
+    else:
+        raise ValueError
 
     LOGGER.info("input samples: %s", path_samples)
     LOGGER.info("output dir: %s", dir_out)
@@ -52,21 +63,22 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
         # what sample attributes go with this file pair?
         if sample_name:
             # use name if one given
-            sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+            samp_name = sample_name
+            sample = [samp for samp in samples.values() if samp["Sample"] == samp_name][0]
         else:
             # otherwise infer from paths
-            sample_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
-            sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+            samp_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
+            sample = [samp for samp in samples.values() if samp["Sample"] == samp_name][0]
         adapter_fwd = get_adapter_fwd(sample, species)
         adapter_rev = get_adapter_rev(sample)
-        output_r1 = dir_out / f"{sample_name}.R1.fastq.gz"
-        output_r2 = dir_out / f"{sample_name}.R2.fastq.gz"
-        LOGGER.info("sample %s: Fwd Adapter: %s", sample_name, adapter_fwd)
-        LOGGER.info("sample %s: Rev Adapter: %s", sample_name, adapter_rev)
-        LOGGER.info("sample %s: R1 in: %s", sample_name, pair["R1"])
-        LOGGER.info("sample %s: R2 in: %s", sample_name, pair["R2"])
-        LOGGER.info("sample %s: R1 in: %s", sample_name, output_r1)
-        LOGGER.info("sample %s: R2 in: %s", sample_name, output_r2)
+        output_r1 = dir_out / f"{samp_name}.R1.fastq.gz"
+        output_r2 = dir_out / f"{samp_name}.R2.fastq.gz"
+        LOGGER.info("sample %s: Fwd Adapter: %s", samp_name, adapter_fwd)
+        LOGGER.info("sample %s: Rev Adapter: %s", samp_name, adapter_rev)
+        LOGGER.info("sample %s: R1 in: %s", samp_name, pair["R1"])
+        LOGGER.info("sample %s: R2 in: %s", samp_name, pair["R2"])
+        LOGGER.info("sample %s: R1 in: %s", samp_name, output_r1)
+        LOGGER.info("sample %s: R2 in: %s", samp_name, output_r2)
         if not dry_run:
             cutadapt(
                 pair["R1"], pair["R2"],
@@ -80,7 +92,7 @@ def cutadapt(r1_in, r2_in, r1_out, r2_out, adapter_fwd, adapter_rev, min_length,
     args = [
         CUTADAPT, "--cores", threads,
         "--quality-cutoff", quality_cutoff,
-        "-m", min_length,
+        "--minimum-length", min_length,
         "-a", adapter_fwd,
         "-A", adapter_rev,
         "-o", r1_out,
