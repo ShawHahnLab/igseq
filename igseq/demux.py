@@ -2,15 +2,14 @@
 Demultiplex reads into per-sample files.
 """
 
-import re
 import logging
 from collections import defaultdict
 from pathlib import Path
-from csv import DictReader, DictWriter
+from csv import DictWriter
 from Bio.Seq import Seq
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 from . import util
-from .util import READS, DATA
+from .util import READS, BARCODES, assign_barcode_seqs
 from .fastgzip import fast_gzip_open
 
 LOGGER = logging.getLogger(__name__)
@@ -26,12 +25,6 @@ LOGGER = logging.getLogger(__name__)
 # set this to gzip.open instead.
 GZIP_OPEN = fast_gzip_open
 
-def __load_barcodes(path):
-    with open(path, encoding="ascii") as f_in:
-        reader = DictReader(f_in)
-        return list(reader)
-
-BARCODES = __load_barcodes(DATA / "barcodes.csv")
 # lists of all forward and reverse barcodes
 BARCODES_FWD = [attrs["Seq"] for attrs in BARCODES if attrs["Direction"] == "F"]
 BARCODES_REV = [attrs["Seq"] for attrs in BARCODES if attrs["Direction"] == "R"]
@@ -73,12 +66,12 @@ def demux(paths_input, path_samples, run_id=None, dir_out="", path_counts="", pa
     if path_counts == "":
         path_counts = Path(dir_out) / "demux.counts.csv"
     if path_details == "":
-        path_details  = Path(dir_out) / "demux.info.csv.gz"
+        path_details = Path(dir_out) / "demux.info.csv.gz"
     # filter to just the relevant run
     samples = {key: val for key, val in samples.items() if val["Run"] == run_id}
     if not samples:
         raise ValueError(f"No matching samples for run {run_id} found in {path_samples}")
-    samples = __assign_barcode_seqs(samples)
+    samples = assign_barcode_seqs(samples)
     for rdid in READS:
         LOGGER.info("input %s: %s", rdid, paths_input_trio[rdid])
     LOGGER.info("input samples: %s (%d samples for run \"%s\")", path_samples, len(samples), run_id)
@@ -228,23 +221,3 @@ def assign_barcode_rev(seq, barcodes, max_mismatch=1):
         idx = mismatches.index(min_mismatch)
         return barcodes[idx]
     return None
-
-def __assign_barcode_seqs(samples):
-    # copy sample attributes so we can safely add barcode sequences to our copy
-    # TODO handle unexpected keys
-    samples = {key: samples[key].copy() for key in samples}
-    # lookup table of direction+barcode ID, with ID as integer.
-    bc_lut = {}
-    for attrs in BARCODES:
-        bc_lut[(attrs["Direction"], int(attrs["BC"]))] = attrs["Seq"]
-    # remove a prefix on the text, if there is one, and cast to int.  Or if
-    # that doesn't work assume it already is.
-    def bcmunge(txt):
-        try:
-            return int(re.sub("^.*_", "", txt))
-        except TypeError:
-            return txt
-    for attrs in samples.values():
-        attrs["BarcodeFwdSeq"] = bc_lut[("F", bcmunge(attrs["BarcodeFwd"]))]
-        attrs["BarcodeRevSeq"] = bc_lut[("R", bcmunge(attrs["BarcodeRev"]))]
-    return samples

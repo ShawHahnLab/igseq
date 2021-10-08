@@ -8,6 +8,7 @@ import logging
 from .demux import demux
 from .phix import phix
 from .getreads import getreads
+from .trim import trim
 from .show import show_files, list_files
 
 LOGGER = logging.getLogger()
@@ -54,6 +55,20 @@ def main_getreads(args):
         threads_proc=args.threads,
         dry_run=args.dry_run)
 
+def main_trim(args):
+    if args.no_counts:
+        args.countsfile = None
+    trim(
+        paths_input=args.input,
+        path_samples=args.samples,
+        dir_out=args.outdir,
+        path_counts=args.countsfile,
+        species=args.species,
+        sample_name=args.sample_name,
+        min_length=args.min_length,
+        quality_cutoff=args.quality_cutoff,
+        threads=args.threads)
+
 def main_show(args):
     show_files(text_items=args.text, force=args.force)
 
@@ -78,6 +93,7 @@ def __setup_arg_parser():
     p_get = subps.add_parser("getreads", help="get raw read data with Illumina bcl2fastq")
     p_demux = subps.add_parser("demux", help="demultiplex raw read data into separate samples")
     p_phix = subps.add_parser("phix", help="align unassigned reads post-demux to PhiX genome")
+    p_trim = subps.add_parser("trim", help="trim off low-quality and adapter sequences at the ends of the reads")
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
 
@@ -105,6 +121,19 @@ def __setup_arg_parser():
     p_phix.add_argument("-t", "--threads", type=int, default=1, help="number of threads for parallel processing (default: 1)")
     p_phix.add_argument("input", nargs="+", help="one directory or individual R1/R2 files in order")
     p_phix.set_defaults(func=main_phix)
+
+    __add_common_args(p_trim)
+    p_trim.add_argument("-s", "--samples", default="metadata/samples.csv", help="CSV of sample attributes")
+    p_trim.add_argument("-o", "--outdir", default="", help="Output directory")
+    p_trim.add_argument("-c", "--countsfile", default="", help="file to write read counts to")
+    p_trim.add_argument("--no-counts", action="store_true", help="don't write a counts file")
+    p_trim.add_argument("-S", "--species", default="rhesus", help="species to use for primer sequences (human or rhesus)")
+    p_trim.add_argument("--sample-name", help="use this sample name rather than inferring from filenames")
+    p_trim.add_argument("--min-length", type=int, default=50, help="minimum length setting passed to cutadapt")
+    p_trim.add_argument("--quality-cutoff", type=int, default=15, help="quality cutoff setting passed to cutadapt")
+    p_trim.add_argument("-t", "--threads", type=int, default=1, help="number of threads for parallel processing (default: 1)")
+    p_trim.add_argument("input", nargs="+", help="one directory or individual R1/R2 files in order")
+    p_trim.set_defaults(func=main_trim)
 
     __add_common_args(p_show)
     p_show.add_argument("text", nargs="+", help="partial filename to show")
