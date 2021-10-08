@@ -1,5 +1,5 @@
 """
-Trim adapter sequences.
+Trim adapter/low-quality parts from sequences.
 """
 
 import re
@@ -42,21 +42,32 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
     else:
         # take R1/R2 as given
         pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
+
+    LOGGER.info("input samples: %s", path_samples)
+    LOGGER.info("output dir: %s", dir_out)
+    LOGGER.info("output counts: %s", path_counts)
     if not dry_run:
-        dir_out.parent.mkdir(parents=True, exist_ok=True)
-        for pair in pairs:
-            # what sample attributes go with this file pair?
-            if sample_name:
-                # use name if one given
-                sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
-            else:
-                # otherwise infer from paths
-                sample_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
-                sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
-            adapter_fwd = get_adapter_fwd(sample, species)
-            adapter_rev = get_adapter_rev(sample)
-            output_r1 = dir_out / f"{sample_name}.R1.fastq.gz"
-            output_r2 = dir_out / f"{sample_name}.R2.fastq.gz"
+        dir_out.mkdir(parents=True, exist_ok=True)
+    for pair in pairs:
+        # what sample attributes go with this file pair?
+        if sample_name:
+            # use name if one given
+            sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+        else:
+            # otherwise infer from paths
+            sample_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
+            sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+        adapter_fwd = get_adapter_fwd(sample, species)
+        adapter_rev = get_adapter_rev(sample)
+        output_r1 = dir_out / f"{sample_name}.R1.fastq.gz"
+        output_r2 = dir_out / f"{sample_name}.R2.fastq.gz"
+        LOGGER.info("sample %s: Fwd Adapter: %s", sample_name, adapter_fwd)
+        LOGGER.info("sample %s: Rev Adapter: %s", sample_name, adapter_rev)
+        LOGGER.info("sample %s: R1 in: %s", sample_name, pair["R1"])
+        LOGGER.info("sample %s: R2 in: %s", sample_name, pair["R2"])
+        LOGGER.info("sample %s: R1 in: %s", sample_name, output_r1)
+        LOGGER.info("sample %s: R2 in: %s", sample_name, output_r2)
+        if not dry_run:
             cutadapt(
                 pair["R1"], pair["R2"],
                 output_r1, output_r2,
