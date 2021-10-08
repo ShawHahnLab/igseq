@@ -42,7 +42,7 @@ def save_counts(path_counts, counts):
         for row in counts:
             writer.writerow(row)
 
-def parse_fqgz_paths(paths, keys=None, txt="", nottxt=""):
+def parse_fqgz_paths(paths, keys=None, txt=""):
     """Take list of paths and match up with I1/R1/R2 files as a dictionary.
 
     If the list has one item and it's a directory, try to match by filename.
@@ -52,7 +52,6 @@ def parse_fqgz_paths(paths, keys=None, txt="", nottxt=""):
     keys: what items to match.  If None, will be I1/R1/R2.
     txt: substring to require in fastq.gz filenames.  If empty, all fastq.gz
          files will be considered.
-    nottxt: like txt, but excludes.  takes precedence over txt.
     """
     if not keys:
         keys = READS.copy()
@@ -63,8 +62,6 @@ def parse_fqgz_paths(paths, keys=None, txt="", nottxt=""):
             files = list(path.glob("*.fastq.gz"))
             for key in keys:
                 for fpath in files:
-                    if nottxt in fpath.name:
-                        continue
                     if txt in fpath.name and key in fpath.name:
                         result[key] = Path(fpath)
         else:
