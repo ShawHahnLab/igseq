@@ -13,7 +13,7 @@ CUTADAPT = "cutadapt"
 
 # https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming
 # https://cutadapt.readthedocs.io/en/stable/algorithms.html#quality-trimming-algorithm
-def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus", sample_name=None, min_length=50, quality_cutoff=15, threads=1):
+def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus", sample_name=None, min_length=50, quality_cutoff=15, dry_run=False, threads=1):
     """
 
     paths_input: list of paths to demultiplexed samples (one directory or a
@@ -41,39 +41,42 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
         raise NotImplementedError # TODO
     else:
         # take R1/R2 as given
-        pairs = [{"R1": paths_input[0], "R2": paths_input[1]}]
-    for pair in pairs:
-        # what sample attributes go with this file pair?
-        if sample_name:
-            # use name if one given
-            sample = [samp for samp in samples if samp["Sample"] == sample_name][0]
-        else:
-            # otherwise infer from paths
-            sample_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
-            sample = [samp for samp in samples if samp["Sample"] == sample_name][0]
-        adapter_fwd = get_adapter_fwd(sample, species)
-        adapter_rev = get_adapter_rev(sample)
-        output_r1 = dir_out / f"{sample_name}.R1.fastq.gz"
-        output_r2 = dir_out / f"{sample_name}.R2.fastq.gz"
-        cutadapt(
-            pair["R1"], pair["R2"],
-            output_r1, output_r2,
-            adapter_fwd, adapter_rev,
-            min_length, quality_cutoff, threads)
+        pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
+    if not dry_run:
+        dir_out.parent.mkdir(parents=True, exist_ok=True)
+        for pair in pairs:
+            # what sample attributes go with this file pair?
+            if sample_name:
+                # use name if one given
+                sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+            else:
+                # otherwise infer from paths
+                sample_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
+                sample = [samp for samp in samples.values() if samp["Sample"] == sample_name][0]
+            adapter_fwd = get_adapter_fwd(sample, species)
+            adapter_rev = get_adapter_rev(sample)
+            output_r1 = dir_out / f"{sample_name}.R1.fastq.gz"
+            output_r2 = dir_out / f"{sample_name}.R2.fastq.gz"
+            cutadapt(
+                pair["R1"], pair["R2"],
+                output_r1, output_r2,
+                adapter_fwd, adapter_rev,
+                min_length, quality_cutoff, threads)
 
 # cutadapt on a single pair
 def cutadapt(r1_in, r2_in, r1_out, r2_out, adapter_fwd, adapter_rev, min_length,
         quality_cutoff, threads):
     args = [
-        CUTADAPT, "--cores", str(threads),
-        "--qualit-cutoff", str(quality_cutoff),
-        "-m", str(min_length),
+        CUTADAPT, "--cores", threads,
+        "--quality-cutoff", quality_cutoff,
+        "-m", min_length,
         "-a", adapter_fwd,
         "-A", adapter_rev,
-        "-o", str(r1_out),
-        "-p", str(r2_out),
-        str(r1_in),
-        str(r2_in)]
+        "-o", r1_out,
+        "-p", r2_out,
+        r1_in,
+        r2_in]
+    args = [str(arg) for arg in args]
     subprocess.run(args, check=True)
 
 def get_adapter_fwd(sample, species):

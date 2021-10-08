@@ -67,6 +67,7 @@ def main_trim(args):
         sample_name=args.sample_name,
         min_length=args.min_length,
         quality_cutoff=args.quality_cutoff,
+        dry_run=args.dry_run,
         threads=args.threads)
 
 def main_show(args):
