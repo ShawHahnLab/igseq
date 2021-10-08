@@ -1,0 +1,10 @@
+# conda environment YAML for igseq
+name: igseq
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - biopython>=1.79
+  - python>=3.9.7
+  - bwa>=0.7.17
+  - samtools>=1.13
