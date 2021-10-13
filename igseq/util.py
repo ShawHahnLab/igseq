@@ -91,7 +91,11 @@ def common_parent(paths):
 
     path/to/something
     """
-    paths = [Path(path) for path in paths]
+    # work with either dict of paths or list of paths
+    try:
+        paths = [Path(path) for path in paths.values()]
+    except AttributeError:
+        paths = [Path(path) for path in paths]
     parents = [reversed(path.parents) for path in paths]
     parent = None
     for level in zip(*parents):

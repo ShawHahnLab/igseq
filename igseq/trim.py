@@ -30,8 +30,6 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
     #    always inferred, if paths_input is dir
     #    can be given (must be?) if paths_input is single pair
 
-    if not dir_out:
-        dir_out = util.default_path(paths_input, "trim")
     samples = util.load_samples(path_samples)
     samples = util.assign_barcode_seqs(samples)
 
@@ -53,6 +51,9 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
         pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
     else:
         raise ValueError
+
+    if not dir_out:
+        dir_out = util.default_path(pairs[0], "trim")
 
     LOGGER.info("input samples: %s", path_samples)
     LOGGER.info("output dir: %s", dir_out)
@@ -77,8 +78,8 @@ def trim(paths_input, path_samples, dir_out="", path_counts="", species="rhesus"
         LOGGER.info("sample %s: Rev Adapter: %s", samp_name, adapter_rev)
         LOGGER.info("sample %s: R1 in: %s", samp_name, pair["R1"])
         LOGGER.info("sample %s: R2 in: %s", samp_name, pair["R2"])
-        LOGGER.info("sample %s: R1 in: %s", samp_name, output_r1)
-        LOGGER.info("sample %s: R2 in: %s", samp_name, output_r2)
+        LOGGER.info("sample %s: R1 out: %s", samp_name, output_r1)
+        LOGGER.info("sample %s: R2 out: %s", samp_name, output_r2)
         if not dry_run:
             cutadapt(
                 pair["R1"], pair["R2"],
