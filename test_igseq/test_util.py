@@ -16,6 +16,12 @@ class TestCommonParent(TestBase):
             Path("path/to/something/dir2/subdir2")])
         self.assertEqual(parent, Path("path/to/something"))
 
+    def test_common_parent_dict(self):
+        parent = igseq_util.common_parent({
+            "R1": Path("path/to/something/dir1/R1.fastq.gz"),
+            "R2": Path("path/to/something/dir2/R2.fastq.gz")})
+        self.assertEqual(parent, Path("path/to/something"))
+
     def test_common_parent_none(self):
         parent = igseq_util.common_parent([
             "dir1/subdir1",
