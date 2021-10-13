@@ -1,0 +1,6 @@
+Category,Item,NumSeqs
+trim,input,1
+trim,output,1
+trim,too_short,0
+trim,read1_with_adapter,1
+trim,read2_with_adapter,1
