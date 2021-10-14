@@ -29,7 +29,8 @@ GZIP_OPEN = fast_gzip_open
 BARCODES_FWD = [attrs["Seq"] for attrs in BARCODES if attrs["Direction"] == "F"]
 BARCODES_REV = [attrs["Seq"] for attrs in BARCODES if attrs["Direction"] == "R"]
 
-def demux(paths_input, path_samples, run_id=None, dir_out="", path_counts="", path_details=None, dry_run=False):
+def demux(paths_input, path_samples, run_id=None, dir_out="", path_counts="",
+    path_details=None, dry_run=False):
     """Demultiplex reads from combined I1/R1/R2 files into per-sample files.
 
     This is the high-level demux function based on file inputs and outputs.

@@ -183,10 +183,12 @@ def __setup_arg_parser():
         help="species to use for selecting appropriate primer sequences (human or rhesus)")
     p_trim.add_argument("--sample-name",
         help="use this sample name rather than inferring from filenames")
-    p_trim.add_argument("--min-length", type=int, default=50,
-        help="minimum length setting passed to cutadapt")
-    p_trim.add_argument("--quality-cutoff", type=int, default=15,
-        help="quality cutoff setting passed to cutadapt")
+    p_trim.add_argument("--min-length", type=int, default=trim.DEFAULTS["min_length"],
+        help="minimum length setting passed to cutadapt "
+        f"(default: {trim.DEFAULTS['min_length']})")
+    p_trim.add_argument("--quality-cutoff", type=int, default=trim.DEFAULTS["quality_cutoff"],
+        help="quality cutoff setting passed to cutadapt "
+        f"(default: {trim.DEFAULTS['quality_cutoff']})")
     p_trim.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_trim.add_argument("input", nargs="+",

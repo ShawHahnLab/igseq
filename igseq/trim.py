@@ -12,11 +12,19 @@ LOGGER = logging.getLogger(__name__)
 
 CUTADAPT = "cutadapt"
 
+DEFAULTS = {
+    # For selecting constant region primer to trim from 3' end of R1
+    "species": "rhesus",
+    # cutadapt settings
+    "min_length": 50,
+    "quality_cutoff": 15
+    }
+
 # https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming
 # https://cutadapt.readthedocs.io/en/stable/algorithms.html#quality-trimming-algorithm
 def trim(
-    paths_input, path_samples, dir_out="", path_counts="", species="rhesus", sample_name=None,
-    dry_run=False, **kwargs):
+    paths_input, path_samples, dir_out="", path_counts="", species=DEFAULTS["species"],
+    sample_name=None, dry_run=False, **kwargs):
     """Trim sample-specific adapter sequences from one or more file pairs.
 
     paths_input: list of paths to demultiplexed samples (one directory or a
@@ -33,20 +41,84 @@ def trim(
     kwargs: additional keyword arguments for cutadapt()
     """
 
-    # paths_input can be:
-    #    dir/to/pairs
-    #    single_r1, single_r2
-    # sample_name:
-    #    always inferred, if paths_input is dir
-    #    can be given (must be?) if paths_input is single pair
-
     samples = util.load_samples(path_samples)
     samples = util.assign_barcode_seqs(samples)
 
-    #### parse paths_input
+    # Initial setup for one or more pairs of R1/R2 input
+    pairs = __parse_multi_fqgz_paths(paths_input)
+    if len(pairs) == 0:
+        raise ValueError(f"No input files found for: {paths_input}")
+    if len(pairs) == 1 and path_counts:
+        pairs[0]["path_counts"] = path_counts
+    elif path_counts:
+        LOGGER.warning("multiple R1/R2 pairs found; ignoring counts path %s", str(path_counts))
+    if len(pairs) == 1 and sample_name:
+        pairs[0]["sample_name"] = sample_name
+    elif sample_name:
+        LOGGER.warning("multiple R1/R2 pairs found; ignoring sample name %s", str(sample_name))
+
+    # Use a given output directory, or By default use an output directory based
+    # on the input directory
+    if dir_out:
+        dir_out = Path(dir_out)
+    else:
+        dir_out = util.default_path(pairs[0], "trim")
+
+    # Assign sample name and file paths for each R1/R2 pair
+    for pair in pairs:
+        if not pair.get("sample_name"):
+            pair["sample_name"] = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
+        samp = pair["sample_name"]
+        if not pair.get("path_counts"):
+            if path_counts is not None:
+                pair["path_counts"] = dir_out / f"{samp}.trim.counts.csv"
+            else:
+                pair["path_counts"] = None
+        pair["R1_out"] = dir_out / f"{samp}.R1.fastq.gz"
+        pair["R2_out"] = dir_out / f"{samp}.R2.fastq.gz"
+        pair["JSON_out"] = dir_out / f"{samp}.cutadapt.json"
+
+    # Loop over each pair and call cutadapt with the appropriate sequences to
+    # trim
+    LOGGER.info("input samples: %s", path_samples)
+    LOGGER.info("output dir: %s", dir_out)
+    LOGGER.info("output counts: %s", path_counts)
+    if not dry_run:
+        dir_out.mkdir(parents=True, exist_ok=True)
+    for pair in pairs:
+        # what sample attributes go with this file pair?
+        sample = [samp for samp in samples.values() if samp["Sample"] == pair["sample_name"]][0]
+        adapter_fwd = get_adapter_fwd(sample, species)
+        adapter_rev = get_adapter_rev(sample)
+        samp = pair["sample_name"]
+        LOGGER.info("sample %s: Fwd Adapter: %s", samp, adapter_fwd)
+        LOGGER.info("sample %s: Rev Adapter: %s", samp, adapter_rev)
+        LOGGER.info("sample %s: R1 in: %s", samp, pair["R1"])
+        LOGGER.info("sample %s: R2 in: %s", samp, pair["R2"])
+        LOGGER.info("sample %s: R1 out: %s", samp, pair["R1_out"])
+        LOGGER.info("sample %s: R2 out: %s", samp, pair["R2_out"])
+        LOGGER.info("sample %s: JSON out: %s", samp, pair["JSON_out"])
+        # tell cutadapt to be quiet if we're at a less-verbose log level, but
+        # not quiet if we're at a more verbose log level (in effect this means
+        # we'd have to be at DEBUG to get quiet=False)
+        quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
+        if not dry_run:
+            cutadapt(
+                pair["R1"], pair["R2"],
+                pair["R1_out"], pair["R2_out"], pair["JSON_out"],
+                adapter_fwd, adapter_rev,
+                quiet=quiet,
+                **kwargs)
+            if pair["path_counts"]:
+                LOGGER.info("sample %s: counts: %s", samp, pair["path_counts"])
+            if not dry_run:
+                cts= _count_cutadapt_reads(pair["JSON_out"])
+                cts = [{"Category": "trim", "Item": k, "NumSeqs": v} for k, v in cts.items()]
+                util.save_counts(pair["path_counts"], cts)
+
+def __parse_multi_fqgz_paths(paths_input):
     if len(paths_input) == 1 and Path(paths_input[0]).is_dir():
         # detect R1/R2 pairs
-        input_case = "dir"
         path = Path(paths_input[0])
         pairs = []
         for fpr1, fpr2 in zip(path.glob("*.R1.fastq.gz"), path.glob("*.R2.fastq.gz")):
@@ -58,69 +130,16 @@ def trim(
                 raise ValueError
             pairs.append({"R1": fpr1, "R2": fpr2})
     elif len(paths_input) == 2:
-        input_case = "pair"
         # take R1/R2 as given
         pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
     else:
         raise ValueError
+    return pairs
 
-    if not dir_out:
-        dir_out = util.default_path(pairs[0], "trim")
-    else:
-        dir_out = Path(dir_out)
-
-    LOGGER.info("input samples: %s", path_samples)
-    LOGGER.info("output dir: %s", dir_out)
-    LOGGER.info("output counts: %s", path_counts)
-    if not dry_run:
-        dir_out.mkdir(parents=True, exist_ok=True)
-    for pair in pairs:
-        # what sample attributes go with this file pair?
-        if sample_name:
-            # use name if one given
-            samp_name = sample_name
-            sample = [samp for samp in samples.values() if samp["Sample"] == samp_name][0]
-        else:
-            # otherwise infer from paths
-            samp_name = re.match(r"(.*)\.R1\.fastq\.gz", pair["R1"].name).group(1)
-            sample = [samp for samp in samples.values() if samp["Sample"] == samp_name][0]
-        adapter_fwd = get_adapter_fwd(sample, species)
-        adapter_rev = get_adapter_rev(sample)
-        output_r1 = dir_out / f"{samp_name}.R1.fastq.gz"
-        output_r2 = dir_out / f"{samp_name}.R2.fastq.gz"
-        output_json = dir_out / f"{samp_name}.cutadapt.json"
-        LOGGER.info("sample %s: Fwd Adapter: %s", samp_name, adapter_fwd)
-        LOGGER.info("sample %s: Rev Adapter: %s", samp_name, adapter_rev)
-        LOGGER.info("sample %s: R1 in: %s", samp_name, pair["R1"])
-        LOGGER.info("sample %s: R2 in: %s", samp_name, pair["R2"])
-        LOGGER.info("sample %s: R1 out: %s", samp_name, output_r1)
-        LOGGER.info("sample %s: R2 out: %s", samp_name, output_r2)
-        LOGGER.info("sample %s: JSON out: %s", samp_name, output_json)
-        # tell cutadapt to be quiet if we're at a less-verbose log level, but
-        # not quiet if we're at a more verbose log level (in effect this means
-        # we'd have to be at DEBUG to get quiet=False)
-        quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
-        if not dry_run:
-            cutadapt(
-                pair["R1"], pair["R2"],
-                output_r1, output_r2, output_json,
-                adapter_fwd, adapter_rev,
-                quiet=quiet,
-                **kwargs)
-        if path_counts is not None:
-            if input_case == "pair" and path_counts:
-                path_counts_here = path_counts
-            else:
-                path_counts_here = dir_out / f"{samp_name}.trim.counts.csv"
-            LOGGER.info("sample %s: counts: %s", samp_name, path_counts_here)
-            if not dry_run:
-                cts= _count_cutadapt_reads(output_json)
-                cts = [{"Category": "trim", "Item": k, "NumSeqs": v} for k, v in cts.items()]
-                util.save_counts(path_counts_here, cts)
-
-# cutadapt on a single pair
-def cutadapt(r1_in, r2_in, r1_out, r2_out, json_out, adapter_fwd, adapter_rev, min_length=50,
-        quality_cutoff=15, threads=1, quiet=True):
+def cutadapt(r1_in, r2_in, r1_out, r2_out, json_out, adapter_fwd, adapter_rev,
+        min_length=DEFAULTS["min_length"],
+        quality_cutoff=DEFAULTS["quality_cutoff"],
+        threads=1, quiet=True):
     """Call cutadapt on paired-end fastq.gz files.
 
     r1_in: Path to input R1 fastq.gz file
