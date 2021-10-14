@@ -96,9 +96,10 @@ def trim(
         LOGGER.info("sample %s: R1 out: %s", samp_name, output_r1)
         LOGGER.info("sample %s: R2 out: %s", samp_name, output_r2)
         LOGGER.info("sample %s: JSON out: %s", samp_name, output_json)
-        # be quiet if we're at a less-verbose log level, but not quiet if we're
-        # at a more verbose log level
-        quiet = logging.getLogger().getEffectiveLevel() >= logging.WARNING
+        # tell cutadapt to be quiet if we're at a less-verbose log level, but
+        # not quiet if we're at a more verbose log level (in effect this means
+        # we'd have to be at DEBUG to get quiet=False)
+        quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
         if not dry_run:
             cutadapt(
                 pair["R1"], pair["R2"],
