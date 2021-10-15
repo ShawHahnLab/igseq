@@ -2,12 +2,28 @@
 Various helper functions.  Not much to see here.
 """
 
+import re
 from pathlib import Path
 from csv import DictReader, DictWriter
+from Bio.Seq import Seq
 
 DATA = Path(__file__).parent / "data"
 FILES = [path for path in DATA.glob("**/*") if path.is_file()]
 READS = ["I1", "R1", "R2"]
+
+def __load_primers(path):
+    with open(path, encoding="ascii") as f_in:
+        reader = DictReader(f_in)
+        return list(reader)
+
+def __load_barcodes(path):
+    with open(path, encoding="ascii") as f_in:
+        reader = DictReader(f_in)
+        return list(reader)
+
+BARCODES = __load_barcodes(DATA / "barcodes.csv")
+PRIMERS = __load_primers(DATA / "primers.csv")
+P5SEQ = "TCTTTCCCTACACGACGCTCTTCCGATCT"
 
 def load_samples(path_samples):
     """"Load a CSV of sample info into a per-sample dictionary."""
@@ -20,6 +36,8 @@ def load_samples(path_samples):
 
 def save_counts(path_counts, counts):
     """Save seq count info (lists of Category/Item/NumSeqs dicts) to CSV file."""
+    path_counts = Path(path_counts)
+    path_counts.parent.mkdir(parents=True, exist_ok=True)
     with open(path_counts, "wt", encoding="ASCII") as f_out:
         writer = DictWriter(f_out, fieldnames=["Category", "Item", "NumSeqs"], lineterminator="\n")
         writer.writeheader()
@@ -75,7 +93,11 @@ def common_parent(paths):
 
     path/to/something
     """
-    paths = [Path(path) for path in paths]
+    # work with either dict of paths or list of paths
+    try:
+        paths = [Path(path) for path in paths.values()]
+    except AttributeError:
+        paths = [Path(path) for path in paths]
     parents = [reversed(path.parents) for path in paths]
     parent = None
     for level in zip(*parents):
@@ -87,3 +109,34 @@ def common_parent(paths):
 def parse_quals(txt, shift=33):
     """Parse FASTQ-encoded Phred scores from ASCII text."""
     return [ord(letter)-shift for letter in txt]
+
+def revcmp(record):
+    """Reverse complement a SeqRcord, keeping ALL metadata.
+    If a string is given, reverse-complement that.
+    """
+    try:
+        return record.reverse_complement(
+            id=True, name=True, description=True, features=True,
+            annotations=True, letter_annotations=True, dbxrefs=True)
+    except AttributeError:
+        return Seq(record).reverse_complement()
+
+def assign_barcode_seqs(samples):
+    # copy sample attributes so we can safely add barcode sequences to our copy
+    # TODO handle unexpected keys
+    samples = {key: samples[key].copy() for key in samples}
+    # lookup table of direction+barcode ID, with ID as integer.
+    bc_lut = {}
+    for attrs in BARCODES:
+        bc_lut[(attrs["Direction"], int(attrs["BC"]))] = attrs["Seq"]
+    # remove a prefix on the text, if there is one, and cast to int.  Or if
+    # that doesn't work assume it already is.
+    def bcmunge(txt):
+        try:
+            return int(re.sub("^.*_", "", txt))
+        except TypeError:
+            return txt
+    for attrs in samples.values():
+        attrs["BarcodeFwdSeq"] = bc_lut[("F", bcmunge(attrs["BarcodeFwd"]))]
+        attrs["BarcodeRevSeq"] = bc_lut[("R", bcmunge(attrs["BarcodeRev"]))]
+    return samples

@@ -1,0 +1,116 @@
+{
+  "tag": "Cutadapt report",
+  "schema_version": [0, 1],
+  "cutadapt_version": "3.5",
+  "python_version": "3.9.7",
+  "command_line_arguments": [
+    "--cores",
+    "1",
+    "--quality-cutoff",
+    "15",
+    "--minimum-length",
+    "50",
+    "-a",
+    "TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+    "-A",
+    "TAGTGGTTNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+    "-o",
+    "/tmp/tmpvn5nni3g/sample1.R1.fastq.gz",
+    "-p",
+    "/tmp/tmpvn5nni3g/sample1.R2.fastq.gz",
+    "--json",
+    "/tmp/tmpvn5nni3g/sample1.cutadapt.json",
+    "--quiet",
+    "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R1.fastq.gz",
+    "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R2.fastq.gz"
+  ],
+  "cores": 1,
+  "input": {
+    "path1": "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R1.fastq.gz",
+    "path2": "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R2.fastq.gz",
+    "paired": true
+  },
+  "read_counts": {
+    "input": 1,
+    "filtered": {
+      "too_short": 0,
+      "too_long": null,
+      "too_many_n": null,
+      "too_many_expected_errors": null,
+      "casava_filtered": null,
+      "discard_trimmed": null,
+      "discard_untrimmed": null
+    },
+    "output": 1,
+    "reverse_complemented": null,
+    "read1_with_adapter": 1,
+    "read2_with_adapter": 1
+  },
+  "basepair_counts": {
+    "input": 618,
+    "input_read1": 309,
+    "input_read2": 309,
+    "quality_trimmed": 0,
+    "quality_trimmed_read1": 0,
+    "quality_trimmed_read2": 0,
+    "output": 400,
+    "output_read1": 200,
+    "output_read2": 200
+  },
+  "adapters_read1": [
+    {
+      "name": "1",
+      "total_matches": 1,
+      "on_reverse_complement": null,
+      "linked": false,
+      "five_prime_end": null,
+      "three_prime_end": {
+        "type": "regular_three_prime",
+        "sequence": "TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+        "error_rate": 0.1,
+        "indels": true,
+        "error_lengths": [9, 19, 29, 32],
+        "matches": 1,
+        "adjacent_bases": {
+          "A": 0,
+          "C": 0,
+          "G": 1,
+          "T": 0,
+          "": 0
+        },
+        "dominant_adjacent_base": null,
+        "trimmed_lengths": [
+          {"len": 109, "expect": 0.0, "counts": [1]}
+        ]
+      }
+    }
+  ],
+  "adapters_read2": [
+    {
+      "name": "2",
+      "total_matches": 1,
+      "on_reverse_complement": null,
+      "linked": false,
+      "five_prime_end": null,
+      "three_prime_end": {
+        "type": "regular_three_prime",
+        "sequence": "TAGTGGTTNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+        "error_rate": 0.1,
+        "indels": true,
+        "error_lengths": [9, 19, 29, 37],
+        "matches": 1,
+        "adjacent_bases": {
+          "A": 0,
+          "C": 0,
+          "G": 0,
+          "T": 1,
+          "": 0
+        },
+        "dominant_adjacent_base": null,
+        "trimmed_lengths": [
+          {"len": 109, "expect": 0.0, "counts": [1]}
+        ]
+      }
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+"""
+Show contents of files built into the igseq package.
+"""
+
 import os
 import sys
 from pathlib import Path

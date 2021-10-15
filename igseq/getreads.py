@@ -1,5 +1,14 @@
 """
 Get raw reads from an Illumina run directory.
+
+This is a wrapper around Illumina's bcl2fastq program, just with some automatic
+handling of the weirdness of the IgSeq protocol.  A dummy sample sheet is used
+to try to ensure that all reads are placed in the Undetermined files (since
+demultiplexing must be performed separately anyway) and index reads are enabled
+so they can be used later during demultiplexing.
+
+This step can be skipped if you already have all of your reads in single trio
+of I1/R1/R2 fastq.gz files.
 """
 
 import gzip
@@ -57,11 +66,13 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
                 # don't bother doing a fuzzy match on any supposed barcodes
                 "--barcode-mismatches", "0",
                 "--sample-sheet", sample_sheet.name,
-                # TODO investigate this further.  In tests with one tile it looks like
-                # it runs much faster with the defaults, so some multithreading may
-                # still help.
+                # parallel processing during loading can help a bit in my tests
                 "--loading-threads", str(threads_load),
+                # parallel processing does *not* help during the bcl2fastq
+                # demultiplexing step, go figure, when we don't have any
+                # demultiplexing to perform here
                 "--demultiplexing-threads", "1",
+                # parallel processing in the processing step helps quite a bit
                 "--processing-threads", str(threads_proc),
                 # help text says "this must not be higher than number of
                 # samples"
