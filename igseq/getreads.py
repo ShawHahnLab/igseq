@@ -38,7 +38,7 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
     path_input = Path(path_input)
     if not dir_out:
         name = path_input.name
-        dir_out = Path("analysis/reads" / name)
+        dir_out = Path("analysis/reads") / name
     else:
         dir_out = Path(dir_out)
     LOGGER.info("input: %s", path_input)
