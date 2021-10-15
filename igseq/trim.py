@@ -42,6 +42,11 @@ def trim(
     """
 
     samples = util.load_samples(path_samples)
+    # filter to just samples with both forward and reverse barocdes IDs
+    # specified, and then match with the sequences
+    # TODO should filter more sensibly to just relevant samples, and sanity
+    # check for unique barcode combos and such
+    samples = {k: v for k, v in samples.items() if v["BarcodeFwd"] and v["BarcodeRev"]}
     samples = util.assign_barcode_seqs(samples)
 
     # Initial setup for one or more pairs of R1/R2 input
