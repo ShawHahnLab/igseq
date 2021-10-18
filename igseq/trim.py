@@ -88,6 +88,7 @@ def trim(
     LOGGER.info("input samples: %s", path_samples)
     LOGGER.info("output dir: %s", dir_out)
     LOGGER.info("output counts: %s", path_counts)
+    LOGGER.info("5PIIA seq: %s", util.ANCHOR5P)
     if not dry_run:
         dir_out.mkdir(parents=True, exist_ok=True)
     for pair in pairs:
@@ -107,11 +108,17 @@ def trim(
         # not quiet if we're at a more verbose log level (in effect this means
         # we'd have to be at DEBUG to get quiet=False)
         quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
+        # combine 5PIIA and forward adapter to get the sequence cutadapt will
+        # expect at the start and end of R1, respectively.  5PIIA will be
+        # anchored so it is implicitly requred.  The other sequence may or may
+        # not be found.
+        adapter_fwd = f"^{util.ANCHOR5P}...{adapter_fwd}"
         if not dry_run:
             cutadapt(
                 pair["R1"], pair["R2"],
                 pair["R1_out"], pair["R2_out"], pair["JSON_out"],
                 adapter_fwd, adapter_rev,
+                discard_untrimmed = True,
                 quiet=quiet,
                 **kwargs)
             if pair["path_counts"]:
@@ -126,7 +133,9 @@ def __parse_multi_fqgz_paths(paths_input):
         # detect R1/R2 pairs
         path = Path(paths_input[0])
         pairs = []
-        for fpr1, fpr2 in zip(path.glob("*.R1.fastq.gz"), path.glob("*.R2.fastq.gz")):
+        for fpr1, fpr2 in zip(
+            sorted(path.glob("*.R1.fastq.gz")),
+            sorted(path.glob("*.R2.fastq.gz"))):
             prefix1 = re.sub(r"\.R1\.fastq\.gz", "", fpr1.name)
             prefix2 = re.sub(r"\.R2\.fastq\.gz", "", fpr2.name)
             if prefix1 == "unassigned":
@@ -142,6 +151,7 @@ def __parse_multi_fqgz_paths(paths_input):
     return pairs
 
 def cutadapt(r1_in, r2_in, r1_out, r2_out, json_out, adapter_fwd, adapter_rev,
+        discard_untrimmed=False,
         min_length=DEFAULTS["min_length"],
         quality_cutoff=DEFAULTS["quality_cutoff"],
         threads=1, quiet=True):
@@ -155,14 +165,17 @@ def cutadapt(r1_in, r2_in, r1_out, r2_out, json_out, adapter_fwd, adapter_rev,
               report is not written.
     adapter_fwd: Sequence to trim from 3' end of R1 (for -a argument)
     adapter_rev: Sequence to trim from 3' end of R2 (for -A argument)
+    discard_untrimmed: should reads without required adapters found be
+                       discarded?
     """
     args = [
         CUTADAPT, "--cores", threads,
         "--quality-cutoff", quality_cutoff,
         "--minimum-length", min_length,
         "-a", adapter_fwd,
-        "-A", adapter_rev,
-        "-o", r1_out,
+        "-A", adapter_rev] + \
+        (["--discard-untrimmed"] if discard_untrimmed else []) + \
+        ["-o", r1_out,
         "-p", r2_out] + \
         (["--json", json_out] if json_out else []) + \
         (["--quiet"] if quiet else []) + \

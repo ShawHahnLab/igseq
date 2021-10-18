@@ -23,7 +23,12 @@ def __load_barcodes(path):
 
 BARCODES = __load_barcodes(DATA / "barcodes.csv")
 PRIMERS = __load_primers(DATA / "primers.csv")
+# P5 Sequencing Primer Site
+# comes just before forward barcode
 P5SEQ = "TCTTTCCCTACACGACGCTCTTCCGATCT"
+# 5' RACE Anchor
+# comes just after forward barcode
+ANCHOR5P = "AAGCAGTGGTATCAACGCAGAGTACATrGrGrG"
 
 def load_samples(path_samples):
     """"Load a CSV of sample info into a per-sample dictionary."""
