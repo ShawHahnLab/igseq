@@ -16,7 +16,8 @@ class TestTrim(TestBase):
 
     samples 1 and 2 are a basic test with different barcode pairs.  Sample 3
     has a valid barcode pair but is missing the expected 5' RACE anchor so the
-    read gets filtered out.
+    read gets filtered out.  sample 4 has the anchor but not the barcode pair
+    but those aren't required so it's kept.
     """
 
     def test_trim_dir_input(self):
@@ -38,7 +39,7 @@ class TestTrim(TestBase):
     def test_trim_file_input(self):
         """Test that adapters are trimmed from R1 and R2 pairs with file input."""
         with TemporaryDirectory() as temp:
-            for idx in [1, 2, 3]:
+            for idx in [1, 2, 3, 4]:
                 trim([
                     self.path/f"input/run/sample{idx}.R1.fastq.gz",
                     self.path/f"input/run/sample{idx}.R2.fastq.gz"],
