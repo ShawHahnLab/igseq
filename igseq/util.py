@@ -28,7 +28,7 @@ PRIMERS = __load_primers(DATA / "primers.csv")
 P5SEQ = "TCTTTCCCTACACGACGCTCTTCCGATCT"
 # 5' RACE Anchor
 # comes just after forward barcode
-ANCHOR5P = "AAGCAGTGGTATCAACGCAGAGTACATrGrGrG"
+ANCHOR5P = "AAGCAGTGGTATCAACGCAGAGTACATGGG"
 
 def load_samples(path_samples):
     """"Load a CSV of sample info into a per-sample dictionary."""
