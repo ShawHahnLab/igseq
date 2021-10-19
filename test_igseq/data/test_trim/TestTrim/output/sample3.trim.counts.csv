@@ -1,7 +1,7 @@
 Category,Item,NumSeqs
 trim,input,1
-trim,output,1
+trim,output,0
 trim,too_short,0
-trim,discard_untrimmed,0
-trim,read1_with_adapter,1
+trim,discard_untrimmed,1
+trim,read1_with_adapter,0
 trim,read2_with_adapter,1

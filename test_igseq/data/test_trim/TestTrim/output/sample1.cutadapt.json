@@ -11,23 +11,24 @@
     "--minimum-length",
     "50",
     "-a",
-    "TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+    "^AAGCAGTGGTATCAACGCAGAGTACATrGrGrG...TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
     "-A",
     "TAGTGGTTNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+    "--discard-untrimmed",
     "-o",
-    "/tmp/tmpvn5nni3g/sample1.R1.fastq.gz",
+    "sample1.R1.fastq.gz",
     "-p",
-    "/tmp/tmpvn5nni3g/sample1.R2.fastq.gz",
+    "sample1.R2.fastq.gz",
     "--json",
-    "/tmp/tmpvn5nni3g/sample1.cutadapt.json",
+    "sample1.cutadapt.json",
     "--quiet",
-    "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R1.fastq.gz",
-    "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R2.fastq.gz"
+    "input/run/sample1.R1.fastq.gz",
+    "input/run/sample1.R2.fastq.gz"
   ],
   "cores": 1,
   "input": {
-    "path1": "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R1.fastq.gz",
-    "path2": "/data/home/jesse/dev/igseq/test_igseq/data/test_trim/TestTrim/input/run/sample1.R2.fastq.gz",
+    "path1": "input/run/sample1.R1.fastq.gz",
+    "path2": "input/run/sample1.R2.fastq.gz",
     "paired": true
   },
   "read_counts": {

@@ -13,6 +13,10 @@ class TestTrim(TestBase):
 
     Each input sequence has 200 random nucleotides and then the adapter that
     should be trimmed, so the output should be a 200 nt sequence each time.
+
+    samples 1 and 2 are a basic test with different barcode pairs.  Sample 3
+    has a valid barcode pair but is missing the expected 5' RACE anchor so the
+    read gets filtered out.
     """
 
     def test_trim_dir_input(self):
@@ -34,14 +38,11 @@ class TestTrim(TestBase):
     def test_trim_file_input(self):
         """Test that adapters are trimmed from R1 and R2 pairs with file input."""
         with TemporaryDirectory() as temp:
-            trim([
-                self.path/"input/run/sample1.R1.fastq.gz",
-                self.path/"input/run/sample1.R2.fastq.gz"],
-                self.path/"samples.csv", dir_out=temp)
-            trim([
-                self.path/"input/run/sample2.R1.fastq.gz",
-                self.path/"input/run/sample2.R2.fastq.gz"],
-                self.path/"samples.csv", dir_out=temp)
+            for idx in [1, 2, 3]:
+                trim([
+                    self.path/f"input/run/sample{idx}.R1.fastq.gz",
+                    self.path/f"input/run/sample{idx}.R2.fastq.gz"],
+                    self.path/"samples.csv", dir_out=temp)
             files = sorted([p.name for p in Path(temp).glob("*")])
             files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
             self.assertEqual(files_expected, files)

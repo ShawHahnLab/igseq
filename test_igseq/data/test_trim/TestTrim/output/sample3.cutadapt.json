@@ -13,22 +13,22 @@
     "-a",
     "^AAGCAGTGGTATCAACGCAGAGTACATrGrGrG...TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
     "-A",
-    "TTAGAGTTNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+    "AGGGCCTTNNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
     "--discard-untrimmed",
     "-o",
-    "sample2.R1.fastq.gz",
+    "sample3.R1.fastq.gz",
     "-p",
-    "sample2.R2.fastq.gz",
+    "sample3.R2.fastq.gz",
     "--json",
-    "sample2.cutadapt.json",
+    "sample3.cutadapt.json",
     "--quiet",
-    "input/run/sample2.R1.fastq.gz",
-    "input/run/sample2.R2.fastq.gz"
+    "input/run/sample3.R1.fastq.gz",
+    "input/run/sample3.R2.fastq.gz"
   ],
   "cores": 1,
   "input": {
-    "path1": "input/run/sample2.R1.fastq.gz",
-    "path2": "input/run/sample2.R2.fastq.gz",
+    "path1": "input/run/sample3.R1.fastq.gz",
+    "path2": "input/run/sample3.R2.fastq.gz",
     "paired": true
   },
   "read_counts": {
@@ -40,62 +40,64 @@
       "too_many_expected_errors": null,
       "casava_filtered": null,
       "discard_trimmed": null,
-      "discard_untrimmed": null
+      "discard_untrimmed": 1
     },
-    "output": 1,
+    "output": 0,
     "reverse_complemented": null,
-    "read1_with_adapter": 1,
+    "read1_with_adapter": 0,
     "read2_with_adapter": 1
   },
   "basepair_counts": {
-    "input": 618,
-    "input_read1": 309,
+    "input": 651,
+    "input_read1": 342,
     "input_read2": 309,
     "quality_trimmed": 0,
     "quality_trimmed_read1": 0,
     "quality_trimmed_read2": 0,
-    "output": 400,
-    "output_read1": 200,
-    "output_read2": 200
+    "output": 0,
+    "output_read1": 0,
+    "output_read2": 0
   },
   "adapters_read1": [
     {
-      "name": "1",
-      "total_matches": 1,
+      "name": "3",
+      "total_matches": 0,
       "on_reverse_complement": null,
-      "linked": false,
-      "five_prime_end": null,
-      "three_prime_end": {
-        "type": "regular_three_prime",
-        "sequence": "CACACAGAGCCCATCCGTCTTCCCCTTGACCCG",
+      "linked": true,
+      "five_prime_end": {
+        "type": "anchored_five_prime",
+        "sequence": "AAGCAGTGGTATCAACGCAGAGTACATRGRGRG",
         "error_rate": 0.1,
         "indels": true,
-        "error_lengths": [9, 19, 29, 33],
-        "matches": 1,
-        "adjacent_bases": {
-          "A": 1,
-          "C": 0,
-          "G": 0,
-          "T": 0,
-          "": 0
-        },
+        "error_lengths": null,
+        "matches": 0,
+        "adjacent_bases": null,
         "dominant_adjacent_base": null,
-        "trimmed_lengths": [
-          {"len": 109, "expect": 0.0, "counts": [1]}
-        ]
+        "trimmed_lengths": []
+      },
+      "three_prime_end": {
+        "type": "regular_three_prime",
+        "sequence": "TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+        "error_rate": 0.1,
+        "indels": true,
+        "error_lengths": [9, 19, 29, 32],
+        "matches": 0,
+        "adjacent_bases": null,
+        "dominant_adjacent_base": null,
+        "trimmed_lengths": []
       }
     }
   ],
   "adapters_read2": [
     {
-      "name": "2",
+      "name": "4",
       "total_matches": 1,
       "on_reverse_complement": null,
       "linked": false,
       "five_prime_end": null,
       "three_prime_end": {
         "type": "regular_three_prime",
-        "sequence": "TTAGAGTTNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+        "sequence": "AGGGCCTTNNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
         "error_rate": 0.1,
         "indels": true,
         "error_lengths": [9, 19, 29, 37],
@@ -103,13 +105,13 @@
         "adjacent_bases": {
           "A": 0,
           "C": 0,
-          "G": 1,
-          "T": 0,
+          "G": 0,
+          "T": 1,
           "": 0
         },
         "dominant_adjacent_base": null,
         "trimmed_lengths": [
-          {"len": 109, "expect": 0.0, "counts": [1]}
+          {"len": 111, "expect": 0.0, "counts": [1]}
         ]
       }
     }
