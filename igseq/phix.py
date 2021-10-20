@@ -50,7 +50,7 @@ def phix(paths_input, bam_out="", counts_out="", dry_run=False, threads=1):
                 num_reads = _count_bam_reads(bam_out)
                 save_counts(
                     counts_out,
-                    [{"Category": "phix", "Item": "phix", "NumSeqs": num_reads}])
+                    [{"Category": "phix", "Item": "mapped", "NumSeqs": num_reads}])
 
 def map_reads(ref_path, r1_path, r2_path, bam_out, threads):
     """Map paired reads to reference (e.g. PhiX genome).

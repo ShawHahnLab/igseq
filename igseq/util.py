@@ -40,11 +40,12 @@ def load_samples(path_samples):
     return samples
 
 def save_counts(path_counts, counts):
-    """Save seq count info (lists of Category/Item/NumSeqs dicts) to CSV file."""
+    """Save seq count info (lists of Category/Sample/Item/NumSeqs dicts) to CSV file."""
     path_counts = Path(path_counts)
     path_counts.parent.mkdir(parents=True, exist_ok=True)
     with open(path_counts, "wt", encoding="ASCII") as f_out:
-        writer = DictWriter(f_out, fieldnames=["Category", "Item", "NumSeqs"], lineterminator="\n")
+        writer = DictWriter(
+            f_out, fieldnames=["Category", "Sample", "Item", "NumSeqs"], lineterminator="\n")
         writer.writeheader()
         for row in counts:
             writer.writerow(row)

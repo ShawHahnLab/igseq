@@ -167,15 +167,16 @@ def _write_chunk(chunk, bc_map, f_outs, counts, details_writer):
                 "BarcodeRevQualMin": min(util.parse_quals(entry[0][2])),
                 })
 
-def _write_counts(path_counts, counts):
-    counts["unassigned"] = counts[None]
-    del counts[None]
-    getcat = lambda key: "unassigned" if key == "unassigned" else "sample"
-    counts = [{"Category": getcat(key), "Item": key, "NumSeqs": val} for key, val in counts.items()]
-    with open(path_counts, "wt", encoding="ASCII") as f_out:
-        writer = DictWriter(f_out, fieldnames=["Category", "Item", "NumSeqs"], lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(counts)
+def _write_counts(path_counts, samp_counts):
+    counts = []
+    for key, val in samp_counts.items():
+        row = {"Category": "demux", "NumSeqs": val}
+        if key:
+            row["Sample"] = key
+            row["Item"] = "output"
+        else:
+            row["Item"] = "unassigned"
+    util.save_counts(path_counts, counts)
 
 def assign_barcode_fwd(seq, barcodes, max_mismatch=1):
     """Assign a forward barcode to a single R1 record.

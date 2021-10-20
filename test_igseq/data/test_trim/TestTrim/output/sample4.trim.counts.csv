@@ -1,7 +1,7 @@
-Category,Item,NumSeqs
-trim,input,1
-trim,output,1
-trim,too_short,0
-trim,discard_untrimmed,0
-trim,read1_with_adapter,1
-trim,read2_with_adapter,0
+Category,Sample,Item,NumSeqs
+trim,sample4,input,1
+trim,sample4,output,1
+trim,sample4,too_short,0
+trim,sample4,discard_untrimmed,0
+trim,sample4,read1_with_adapter,1
+trim,sample4,read2_with_adapter,0

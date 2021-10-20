@@ -24,4 +24,4 @@ class TestPhix(TestBase):
             # Check the read counts.  If this looks right we'll assume the bam
             # does too.
             with open(path/"phix/run/phix.counts.csv", encoding="ASCII") as f_in:
-                self.assertEqual(f_in.read(), "Category,Item,NumSeqs\nphix,phix,1\n")
+                self.assertEqual(f_in.read(), "Category,Sample,Item,NumSeqs\nphix,,mapped,1\n")

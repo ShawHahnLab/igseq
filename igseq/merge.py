@@ -69,7 +69,7 @@ def merge(paths_input, dir_out="", path_counts="", dry_run=False, threads=1):
             logtxt = pear(pair["R1"], pair["R2"], pair["out"], threads, pair["log"], quiet)
             if pair["path_counts"]:
                 cts= _count_pear_reads(logtxt)
-                cts = [{"Category": "merge", "Item": k, "NumSeqs": v} for k, v in cts.items()]
+                cts = [{"Category": "merge", "Sample": samp, "Item": k, "NumSeqs": v} for k, v in cts.items()]
                 util.save_counts(pair["path_counts"], cts)
 
 def pear(r1_in, r2_in, outfile, threads, log_path=None, quiet=True):

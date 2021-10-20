@@ -10,7 +10,7 @@ barcodes used for each sample and the selected species.
 
 import re
 import logging
-import subprocess
+from subprocess import Popen, PIPE, DEVNULL
 import json
 from pathlib import Path
 from . import util
@@ -56,7 +56,7 @@ def trim(
     samples = util.assign_barcode_seqs(samples)
 
     # Initial setup for one or more pairs of R1/R2 input
-    pairs = __parse_multi_fqgz_paths(paths_input)
+    pairs = util.parse_multi_fqgz_paths(paths_input)
     if len(pairs) == 0:
         raise ValueError(f"No input files found for: {paths_input}")
     if len(pairs) == 1 and path_counts:
@@ -87,7 +87,8 @@ def trim(
                 pair["path_counts"] = None
         pair["R1_out"] = dir_out / f"{samp}.R1.fastq.gz"
         pair["R2_out"] = dir_out / f"{samp}.R2.fastq.gz"
-        pair["JSON_out"] = dir_out / f"{samp}.cutadapt.json"
+        pair["JSON_out_1"] = dir_out / f"{samp}.cutadapt1.json"
+        pair["JSON_out_2"] = dir_out / f"{samp}.cutadapt2.json"
 
     # Loop over each pair and call cutadapt with the appropriate sequences to
     # trim
@@ -109,7 +110,10 @@ def trim(
         LOGGER.info("sample %s: R2 in: %s", samp, pair["R2"])
         LOGGER.info("sample %s: R1 out: %s", samp, pair["R1_out"])
         LOGGER.info("sample %s: R2 out: %s", samp, pair["R2_out"])
-        LOGGER.info("sample %s: JSON out: %s", samp, pair["JSON_out"])
+        LOGGER.info("sample %s: JSON out 1: %s", samp, pair["JSON_out_1"])
+        LOGGER.info("sample %s: JSON out 2: %s", samp, pair["JSON_out_2"])
+        if pair["path_counts"]:
+            LOGGER.info("sample %s: counts: %s", samp, pair["path_counts"])
         # tell cutadapt to be quiet if we're at a less-verbose log level, but
         # not quiet if we're at a more verbose log level (in effect this means
         # we'd have to be at DEBUG to get quiet=False)
@@ -120,74 +124,67 @@ def trim(
         # not be found.
         adapter_fwd = f"^{util.ANCHOR5P}...{adapter_fwd}"
         if not dry_run:
-            cutadapt(
-                pair["R1"], pair["R2"],
-                pair["R1_out"], pair["R2_out"], pair["JSON_out"],
+            trim_pair(
+                pair["R1"], pair["R2"], pair["R1_out"], pair["R2_out"],
+                pair["JSON_out_1"], pair["JSON_out_2"],
                 adapter_fwd, adapter_rev,
                 discard_untrimmed = True,
                 quiet=quiet,
                 **kwargs)
             if pair["path_counts"]:
-                LOGGER.info("sample %s: counts: %s", samp, pair["path_counts"])
-            if not dry_run:
-                cts= _count_cutadapt_reads(pair["JSON_out"])
-                cts = [{"Category": "trim", "Item": k, "NumSeqs": v} for k, v in cts.items()]
+                cts= _count_cutadapt_reads(pair["JSON_out_1"], pair["JSON_out_2"])
+                cts = [{"Category": "trim", "Sample": samp, "Item": k, "NumSeqs": v} for k, v in cts.items()]
                 util.save_counts(pair["path_counts"], cts)
 
-def __parse_multi_fqgz_paths(paths_input):
-    if len(paths_input) == 1 and Path(paths_input[0]).is_dir():
-        # detect R1/R2 pairs
-        path = Path(paths_input[0])
-        pairs = []
-        for fpr1, fpr2 in zip(
-            sorted(path.glob("*.R1.fastq.gz")),
-            sorted(path.glob("*.R2.fastq.gz"))):
-            prefix1 = re.sub(r"\.R1\.fastq\.gz", "", fpr1.name)
-            prefix2 = re.sub(r"\.R2\.fastq\.gz", "", fpr2.name)
-            if prefix1 == "unassigned":
-                continue
-            if prefix1 != prefix2:
-                raise ValueError
-            pairs.append({"R1": fpr1, "R2": fpr2})
-    elif len(paths_input) == 2:
-        # take R1/R2 as given
-        pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
-    else:
-        raise ValueError
-    return pairs
+def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapter_fwd, adapter_rev,
+    discard_untrimmed=True,
+    min_length=DEFAULTS["min_length"],
+    quality_cutoff=DEFAULTS["quality_cutoff"],
+    threads=1, quiet=True):
+    """Trim adapters on paired-end fastq.gz files with cutadapt.
 
-def cutadapt(r1_in, r2_in, r1_out, r2_out, json_out, adapter_fwd, adapter_rev,
-        discard_untrimmed=False,
-        min_length=DEFAULTS["min_length"],
-        quality_cutoff=DEFAULTS["quality_cutoff"],
-        threads=1, quiet=True):
-    """Call cutadapt on paired-end fastq.gz files.
+    This chains two cutadapt calls together to get the trimming and filtering behavior.
 
     r1_in: Path to input R1 fastq.gz file
     r2_in: Path to input R2 fastq.gz file
     r1_out: Path to output R1 fastq.gz file
     r2_out: Path to output R2 fastq.gz file
-    json_out: Path to output JSON-format report file.  If empty or None the
-              report is not written.
+    json1_out: Path to output JSON-format report file for first cutadapt
+               command.  If empty or None the report is not written.
+    json2_out: Path to output JSON-format report file for second cutadapt
+               command.  If empty or None the report is not written.
     adapter_fwd: Sequence to trim from 3' end of R1 (for -a argument)
     adapter_rev: Sequence to trim from 3' end of R2 (for -A argument)
     discard_untrimmed: should reads without required adapters found be
                        discarded?
     """
-    args = [
-        CUTADAPT, "--cores", threads,
+    # arguments shared by both cutadapt commands
+    args_common = [CUTADAPT, "--interleaved", "--cores", threads]
+    if quiet:
+        args_common.append("--quiet")
+    # first command: trim R2 adapter and interleave
+    args1 = args_common + ["-A", adapter_rev, r1_in, r2_in]
+    if json1_out:
+        args1.extend(["--json", json1_out])
+    args1 = [str(arg) for arg in args1]
+    # second command: trim linked R1 adapter and filter those that don't start
+    # with the expected sequence.  also apply all other filtering criteria.
+    args2 = args_common + [
+        "-a", adapter_fwd,
         "--quality-cutoff", quality_cutoff,
         "--minimum-length", min_length,
-        "-a", adapter_fwd,
-        "-A", adapter_rev] + \
-        (["--discard-untrimmed"] if discard_untrimmed else []) + \
-        ["-o", r1_out,
-        "-p", r2_out] + \
-        (["--json", json_out] if json_out else []) + \
-        (["--quiet"] if quiet else []) + \
-        [r1_in, r2_in]
-    args = [str(arg) for arg in args]
-    subprocess.run(args, check=True)
+        "-o", r1_out, "-p", r2_out, "-"]
+    if discard_untrimmed:
+        args2.append("--discard-untrimmed")
+    if json2_out:
+        args2.extend(["--json", json2_out])
+    args2 = [str(arg) for arg in args2]
+    # Pipe the output of the first command into the second, and wait for the
+    # second to finish
+    with \
+        Popen(args1, stdout=PIPE, stderr=DEVNULL) as proc1, \
+        Popen(args2, stdin=proc1.stdout) as proc2:
+        proc2.wait()
 
 def get_adapter_fwd(sample, species):
     """Get the adapter sequence to trim off the end of R1.
@@ -220,21 +217,24 @@ def get_adapter_rev(sample):
     # Reverse complement the barcode and prepend to the constant region.
     return util.revcmp(bcfwd) + util.revcmp(util.P5SEQ)
 
-def _count_cutadapt_reads(json_path):
-    """Pull out some read counts of interest from cutadapt's JSON report.
+def _count_cutadapt_reads(json_path_1, json_path_2):
+    """Pull out some read counts of interest from cutadapt's JSON reports.
 
     This gives a simple, flat dictionary output with a subset of the available
     read counts.
     """
 
-    with open(json_path) as f_in:
-        report = json.load(f_in)
-    cts = report["read_counts"]
+    with open(json_path_1) as f_in:
+        report1 = json.load(f_in)
+    with open(json_path_2) as f_in:
+        report2 = json.load(f_in)
+    cts1 = report1["read_counts"]
+    cts2 = report2["read_counts"]
     output = {
-        "input": cts["input"],
-        "output": cts["output"],
-        "too_short": cts["filtered"]["too_short"],
-        "discard_untrimmed": cts["filtered"]["discard_untrimmed"],
-        "read1_with_adapter": cts["read1_with_adapter"],
-        "read2_with_adapter": cts["read2_with_adapter"]}
+        "input": cts1["input"],
+        "output": cts2["output"],
+        "too_short": cts2["filtered"]["too_short"],
+        "discard_untrimmed": cts2["filtered"]["discard_untrimmed"],
+        "read1_with_adapter": cts2["read1_with_adapter"],
+        "read2_with_adapter": cts1["read2_with_adapter"]}
     return output
