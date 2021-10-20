@@ -82,6 +82,29 @@ def parse_fqgz_paths(paths, keys=None, txt=""):
         raise ValueError
     return result
 
+def parse_multi_fqgz_paths(paths_input):
+    if len(paths_input) == 1 and Path(paths_input[0]).is_dir():
+        # detect R1/R2 pairs
+        path = Path(paths_input[0])
+        pairs = []
+        for fpr1, fpr2 in zip(
+            sorted(path.glob("*.R1.fastq.gz")),
+            sorted(path.glob("*.R2.fastq.gz"))):
+            prefix1 = re.sub(r"\.R1\.fastq\.gz", "", fpr1.name)
+            prefix2 = re.sub(r"\.R2\.fastq\.gz", "", fpr2.name)
+            if prefix1 == "unassigned":
+                continue
+            if prefix1 != prefix2:
+                raise ValueError
+            pairs.append({"R1": fpr1, "R2": fpr2})
+    elif len(paths_input) == 2:
+        # take R1/R2 as given
+        pairs = [{"R1": Path(paths_input[0]), "R2": Path(paths_input[1])}]
+    else:
+        raise ValueError
+    return pairs
+
+
 def default_path(paths, name1, name2=""):
     parent = common_parent(paths)
     return parent.parent.parent / name1 / parent.name / name2

@@ -11,6 +11,7 @@ from . import getreads
 from . import demux
 from . import phix
 from . import trim
+from . import merge
 from .show import show_files, list_files
 
 LOGGER = logging.getLogger()
@@ -84,6 +85,16 @@ def _main_trim(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
+def _main_merge(args):
+    if args.no_counts:
+        args.countsfile = None
+    merge.merge(
+        paths_input=args.input,
+        dir_out=args.outdir,
+        path_counts=args.countsfile,
+        dry_run=args.dry_run,
+        threads=args.threads)
+
 def _main_show(args):
     show_files(text_items=args.text, force=args.force)
 
@@ -127,6 +138,10 @@ def __setup_arg_parser():
     p_trim = subps.add_parser("trim",
         help="trim off low-quality and adapter sequences at the ends of the reads with cutadapt",
         description=rewrap(trim.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_merge = subps.add_parser("merge",
+        help="merge read pairs with pear",
+        description=rewrap(merge.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
@@ -194,6 +209,19 @@ def __setup_arg_parser():
     p_trim.add_argument("input", nargs="+",
         help="one directory or individual R1/R2 files in order")
     p_trim.set_defaults(func=_main_trim)
+
+    __add_common_args(p_merge)
+    p_merge.add_argument("-o", "--outdir", default="",
+        help="Output directory")
+    p_merge.add_argument("-c", "--countsfile", default="",
+        help="file to write read counts to")
+    p_merge.add_argument("--no-counts", action="store_true",
+        help="don't write a counts file")
+    p_merge.add_argument("-t", "--threads", type=int, default=1,
+        help="number of threads for parallel processing (default: 1)")
+    p_merge.add_argument("input", nargs="+",
+        help="one directory or individual R1/R2 files in order")
+    p_merge.set_defaults(func=_main_merge)
 
     __add_common_args(p_show)
     p_show.add_argument("text", nargs="+",
