@@ -176,6 +176,7 @@ def _write_counts(path_counts, samp_counts):
             row["Item"] = "output"
         else:
             row["Item"] = "unassigned"
+        counts.append(row)
     util.save_counts(path_counts, counts)
 
 def assign_barcode_fwd(seq, barcodes, max_mismatch=1):
