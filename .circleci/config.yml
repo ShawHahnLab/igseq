@@ -1,0 +1,30 @@
+version: 2.1
+jobs:
+  build:
+    machine:
+      image: circleci/classic:latest
+    steps:
+      - checkout:
+          path: igseq
+      - restore_cache:
+          keys:
+            - cache-{{ checksum "igseq/inst/environment.yml" }}
+      - run:
+          name: Install
+          command: |
+            if [[ ! -e ~/miniconda3/envs/igseq ]]; then
+              wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+              bash Miniconda3-latest-Linux-x86_64.sh -b
+              ~/miniconda3/bin/conda install -c conda-forge mamba --quiet
+              ~/miniconda3/bin/mamba env update --file igseq/inst/environment.yml --quiet
+            fi
+          no_output_timeout: 20m
+      - save_cache:
+          paths: [ ~/miniconda3 ]
+          key: cache-{{ checksum "igseq/inst/environment.yml" }}
+      - run:
+          name: Test python package
+          command: |
+            cd igseq
+            source ~/miniconda3/bin/activate igseq
+            TEST_IGSEQ_LIVE=no python -m unittest -v
