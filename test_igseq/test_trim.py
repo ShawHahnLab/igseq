@@ -1,10 +1,10 @@
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from igseq.trim import trim
-from .util import TestBase
+from .util import TestBase, TestLive
 
-class TestTrim(TestBase):
-    """Basic tests of trim.
+class TestTrimLive(TestBase, TestLive):
+    """Basic tests of trim with actual cutadapt.
 
     Here we have a simple case with two sample with perfect adapters in R1 and
     R2.  We should see the adapters get removed in the output, cutadapt's JSON

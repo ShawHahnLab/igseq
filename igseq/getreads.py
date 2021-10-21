@@ -13,9 +13,9 @@ of I1/R1/R2 fastq.gz files.
 
 import gzip
 import logging
+import subprocess
 from tempfile import NamedTemporaryFile
 from pathlib import Path
-from subprocess import Popen
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +31,10 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
 
     There's a chance reads will be written to a dummy sample's output files due
     to bcl2fastq's insistence of having at least one sample defined in order to
-    write an I1 file.  We use all Ns for that dummy barcode, so if that happens
-    it most likely indicates a quality issue.  If any reads are written for
-    that sample, a message will be logged complaining about it.
+    write an I1 file.  We use an implausible N-heavy sequence for that dummy
+    barcode, so if that happens it most likely indicates a quality issue.  If
+    any reads are written for that sample, a message will be logged complaining
+    about it.
     """
     path_input = Path(path_input)
     if not dir_out:
@@ -55,78 +56,40 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
             sample_sheet.write("[Data]\nSample_ID,index\nsample1,NANANANA\n")
             sample_sheet.flush()
             args = [
-                BCL2FASTQ,
-                "--runfolder-dir", str(path_input),
-                "--output-dir", str(dir_out),
+                "--runfolder-dir", path_input,
+                "--output-dir", dir_out,
                 # By default it'll try to write some files to the input run directory.
                 # we'll send those to the output directory instead.
-                "--interop-dir", str(dir_out / "InterOp"),
+                "--interop-dir", dir_out / "InterOp",
                 # We want the I1 file, so we enable that here.
                 "--create-fastq-for-index-reads",
                 # don't bother doing a fuzzy match on any supposed barcodes
-                "--barcode-mismatches", "0",
+                "--barcode-mismatches", 0,
                 "--sample-sheet", sample_sheet.name,
                 # parallel processing during loading can help a bit in my tests
-                "--loading-threads", str(threads_load),
+                "--loading-threads", threads_load,
                 # parallel processing does *not* help during the bcl2fastq
                 # demultiplexing step, go figure, when we don't have any
                 # demultiplexing to perform here
-                "--demultiplexing-threads", "1",
+                "--demultiplexing-threads", 1,
                 # parallel processing in the processing step helps quite a bit
-                "--processing-threads", str(threads_proc),
+                "--processing-threads", threads_proc,
                 # help text says "this must not be higher than number of
                 # samples"
-                "--writing-threads", "1",
+                "--writing-threads", 1,
                 # it's pretty verbose by default so we'll set a higher log level
-                "--min-log-level", "WARNING"
-                ]
-            LOGGER.info("bcl2fastq command: %s", args)
-            with Popen(args) as proc:
-                proc.wait()
-        notempties = []
-        # peek into each fastq.gz and see if it has anything
-        for path in dir_out.glob("*.fastq.gz"):
-            with gzip.open(path, "rt") as f_in:
-                if f_in.read(1):
-                    notempties.append(path)
-        # We should have three (I1/R1/R2 Undetermined) non-empty fastq.gz
-        # files.  If there are more, maybe some reads got dumped to other
-        # "samples."  If there are fewer...?
-        if len(notempties) > 3:
+                "--min-log-level", "WARNING"]
+            _run_bcl2fastq(args)
+        # We should have three (I1/R1/R2 Undetermined) fastq.gz files.  If
+        # there are more, maybe some reads got dumped to other "samples."  If
+        # there are fewer...?
+        fqgzs = list(dir_out.glob("*.fastq.gz"))
+        if len(fqgzs) > 3:
             LOGGER.warning("more .fastq.gz outputs than expected.")
-        elif len(notempties) < 3:
+        elif len(fqgzs) < 3:
             LOGGER.error("Missing .fastq.gz outputs")
 
-#def _aggregate_read_trios(entries):
-#    extras = []
-#    for key, val in entries.items():
-#        if key == "Undetermined":
-#            outputs = [val[read]["path"] for read in ["I1", "R1", "R2"]]
-#        else:
-#            extras.append([val[read]["path"] for read in ["I1", "R1", "R2"]])
-#    for idx, output in enumerate(outputs):
-#        with open(output, "wb") as f_out:
-#            for trio in extras:
-#                with open(trio[idx], "rb") as f_in:
-#                    f_out.write(f_in.read())
-#                trio[idx].unlink()
-#
-#def parse_fqgz_paths(
-#        dirpath, pattern=r"([-A-za-z0-9]+)_S([0-9]+)_L([0-9]+)_([IR][12])_001\.fastq\.gz"):
-#    dirpath = Path(dirpath)
-#    result = []
-#    for path in dirpath.glob("*.fastq.gz"):
-#        match = re.fullmatch(pattern, path.name)
-#        if match:
-#            result.append({
-#                "sample": match.group(1),
-#                "sample_num": int(match.group(2)),
-#                "lane": int(match.group(3)),
-#                "read": match.group(4),
-#                "path": path})
-#    result_groups = {}
-#    for entry in result:
-#        if not entry["sample"] in result_groups:
-#            result_groups[entry["sample"]] = {}
-#        result_groups[entry["sample"]][entry["read"]] = result
-#    return result_groups
+def _run_bcl2fastq(args):
+    args = [BCL2FASTQ] + [str(arg) for arg in args]
+    LOGGER.info("bcl2fastq command: %s", args)
+    subprocess.run(args, check=True)

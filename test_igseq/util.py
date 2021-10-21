@@ -10,6 +10,16 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from igseq.demux import BARCODES_FWD, BARCODES_REV
 
+def __boolish(txt):
+    if txt.upper() in ["TRUE", "YES", "1"]:
+        return True
+    if txt.upper() in ["FALSE", "NO", "0", ""]:
+        return False
+    raise ValueError
+
+# run "live" (real bcl2fastq/cutadapt/pear/etc.) tests?
+LIVE = __boolish(os.getenv("TEST_IGSEQ_LIVE", "True"))
+
 def random_nt(length):
     return "".join(random.choices(["A", "T", "C", "G"], k = length))
 
@@ -60,6 +70,8 @@ def simulate(i1_path, r1_path, r2_path, num=50000, random_fraction=0.5):
 
 class TestBase(unittest.TestCase):
     def setUp(self):
+        if isinstance(self, TestLive) and not LIVE:
+            self.skipTest("skipping tests with external commands")
         self.path = self.__setup_path()
         self.__startdir = os.getcwd()
 
@@ -87,3 +99,7 @@ class TestBase(unittest.TestCase):
             contents2 = f2_in.read()
             if contents1 != contents2:
                 raise AssertionError(f"mismatch between {path1} and {path2}")
+
+
+class TestLive:
+    pass

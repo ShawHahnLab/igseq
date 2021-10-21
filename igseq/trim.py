@@ -179,6 +179,9 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapter_fwd, a
     if json2_out:
         args2.extend(["--json", json2_out])
     args2 = [str(arg) for arg in args2]
+    _run_cutadapt_pair(args1, args2)
+
+def _run_cutadapt_pair(args1, args2):
     # Pipe the output of the first command into the second, and wait for the
     # second to finish
     with \

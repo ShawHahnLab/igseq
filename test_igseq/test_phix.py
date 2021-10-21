@@ -3,10 +3,10 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from shutil import copytree
 from igseq.phix import phix
-from .util import TestBase
+from .util import TestBase, TestLive
 
 
-class TestPhix(TestBase):
+class TestPhixLive(TestBase, TestLive):
     """Basic test of phix read mapping.
 
     Here we have one read pair intended to map to PhiX and one not.
