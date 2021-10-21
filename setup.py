@@ -1,4 +1,5 @@
 import setuptools
+from pathlib import Path
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -15,7 +16,10 @@ setuptools.setup(
         ],
     python_requires='>=3.9',
     packages=setuptools.find_packages(exclude=["test_*"]),
-    package_data={'igseq': ['data/*']},
+    # How is this still so annoying?
+    # https://stackoverflow.com/q/27664504
+    package_data={
+        'igseq': [str(path.relative_to("igseq")) for path in Path("igseq/data").glob("**/*")]},
     include_package_data=True,
     entry_points={'console_scripts': [
         'igseq=igseq.__main__:main',
