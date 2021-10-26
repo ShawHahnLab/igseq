@@ -11,3 +11,4 @@ dependencies:
   - samtools>=1.13
   - cutadapt>=3.5
   - pear>=0.9.6
+  - igblast>=1.17.1

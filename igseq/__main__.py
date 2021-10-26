@@ -12,6 +12,7 @@ from . import demux
 from . import phix
 from . import trim
 from . import merge
+from . import igblast
 from .show import show_files, list_files
 
 LOGGER = logging.getLogger()
@@ -101,6 +102,14 @@ def _main_show(args):
 def _main_list(args):
     list_files(text_items=args.text)
 
+def _main_igblast(args):
+    igblast.igblast(
+        query_path=args.query,
+        db_paths=args.database,
+        species=args.species,
+        dry_run=args.dry_run,
+        threads=args.threads)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -142,6 +151,10 @@ def __setup_arg_parser():
     p_merge = subps.add_parser("merge",
         help="merge read pairs with pear",
         description=rewrap(merge.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_igblast = subps.add_parser("igblast",
+        help="Run IgBLAST on a set of sequences",
+        description=rewrap(igblast.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
@@ -233,6 +246,17 @@ def __setup_arg_parser():
     __add_common_args(p_list)
     p_list.add_argument("text", nargs="*", help="partial filename to list")
     p_list.set_defaults(func=_main_list)
+
+    __add_common_args(p_igblast)
+    p_igblast.add_argument("-Q", "--query",
+        help="query FASTA")
+    p_igblast.add_argument("-d", "--database", nargs="+",
+        help="one directory or individual V/D/J FASTA files in order")
+    p_igblast.add_argument("-S", "--species",
+            help="species to use (human or rhesus).  Default: infer from database")
+    p_igblast.add_argument("-t", "--threads", type=int, default=1,
+        help="number of threads for parallel processing (default: 1)")
+    p_igblast.set_defaults(func=_main_igblast)
 
     return parser
 
