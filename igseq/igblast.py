@@ -6,8 +6,7 @@ import logging
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
-from Bio import SeqIO
-from . import util
+from . import germ_gather
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,39 +18,6 @@ SPECIESMAP = {
     "rhesus": "rhesus_monkey",
     "human": "human"}
 
-def gather_germline(dir_path_in, dir_path_out):
-    # take VDJ found and aggregate by segment in one place.
-    dir_path_in = Path(dir_path_in)
-    dir_path_out  = Path(dir_path_out)
-    # gather up any recognized file paths
-    parts = {"V": [], "D": [], "J": []}
-    for path in dir_path_in.glob("**/*"):
-        if path.suffix.lower() in [".fasta", ".fa", ".fna"]:
-            segment = parse_segment(path.name)
-            if segment:
-                parts[segment].append(path)
-            else:
-                LOGGER.warning("Found FASTA but doesn't look like V/D/J: %s", path)
-    if not all(parts.values()):
-        LOGGER.error(
-            "Missing germline input for: %s",
-            [key for key, val in parts.items() if not val])
-    dir_path_out.mkdir(parents=True, exist_ok=True)
-    # combine by segment
-    for segment, paths in parts.items():
-        with open(dir_path_out/f"{segment}.fasta", "wt") as f_out:
-            for path in paths:
-                for record in SeqIO.parse(path, "fasta"):
-                    SeqIO.write(record, f_out, "fasta-2line")
-
-def parse_segment(txt):
-    # e.g. "IGHV.fasta" -> "V"
-    segments = ["V", "D", "J"]
-    match = [letter for letter in segments if letter in txt.upper()]
-    if len(match) != 1:
-        return None
-    return match[0]
-
 def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
     LOGGER.info("input db path(s): %s", db_paths)
     LOGGER.info("input query path: %s", query_path)
@@ -60,7 +26,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
     # if db_paths is a single dir, find all fastas
     # if three files, use in order
     # if species given, use that, if not, try to parse from db_paths
-    paths = _parse_db_paths(db_paths)
+    paths = germ_gather.parse_vdj_paths(db_paths)
     LOGGER.info("detected db type: %s", paths["type"])
     LOGGER.info("detected db details: %s", {k: v for k, v in paths.items() if k != "type"})
 
@@ -76,7 +42,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
                         f_out.write(f_in.read())
         elif paths["type"] == "dir":
             if not dry_run:
-                gather_germline(paths["path"], tmp)
+                germ_gather._gather_germline(paths["path"], tmp)
         elif paths["type"] == "internal":
             if not species:
                 for key in SPECIESMAP:
@@ -87,7 +53,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
             if not species:
                 LOGGER.error("Could not determine species from database input %s", paths["path"])
             if not dry_run:
-                gather_germline(paths["path"], tmp)
+                germ_gather._gather_germline(paths["path"], tmp)
         if not species:
             LOGGER.error("Species is required")
             raise ValueError
@@ -130,23 +96,3 @@ def _run_igblastn(args):
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
     subprocess.run(args, check=True)
-
-def _parse_db_paths(db_paths):
-    if len(db_paths) == 3 and all([Path(path).is_file() for path in db_paths]):
-        return {
-            "type": "filetrio",
-            "V": Path(db_paths[0]),
-            "D": Path(db_paths[1]),
-            "J": Path(db_paths[2])}
-    if len(db_paths) == 1 and Path(db_paths[0]).is_dir():
-        return {
-            "type": "dir",
-            "path": Path(db_paths[0])}
-    if len(db_paths) == 1:
-        for filepath in util.FILES:
-            for parent in filepath.parents:
-                if str(parent).endswith(db_paths[0]):
-                    return {
-                        "type": "internal",
-                        "path": parent}
-    raise ValueError("IgBLAST database input not recogized: %s" % str(db_paths))

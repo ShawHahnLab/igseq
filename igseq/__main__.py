@@ -13,6 +13,7 @@ from . import phix
 from . import trim
 from . import merge
 from . import igblast
+from . import germ_gather
 from .show import show_files, list_files
 
 LOGGER = logging.getLogger()
@@ -110,6 +111,12 @@ def _main_igblast(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
+def _main_germ_gather(args):
+    germ_gather.gather_germline(
+        db_paths=args.database,
+        dir_path_out=args.outdir,
+        dry_run=args.dry_run)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -155,6 +162,10 @@ def __setup_arg_parser():
     p_igblast = subps.add_parser("igblast",
         help="Run IgBLAST on a set of sequences",
         description=rewrap(igblast.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_germ_gather= subps.add_parser("germ-gather",
+        help="Gather germline sequence references into one directory",
+        description=rewrap(germ_gather.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
@@ -257,6 +268,13 @@ def __setup_arg_parser():
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
+
+    __add_common_args(p_germ_gather)
+    p_germ_gather.add_argument("-d", "--database", nargs="+",
+        help="one directory with one or more each of V, D, J FASTA.")
+    p_germ_gather.add_argument("-o", "--outdir",
+        help="Output directory")
+    p_germ_gather.set_defaults(func=_main_germ_gather)
 
     return parser
 

@@ -1,4 +1,3 @@
-
 from unittest.mock import Mock
 from igseq import igblast
 from .util import TestBase, TestLive
