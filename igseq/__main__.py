@@ -13,7 +13,7 @@ from . import phix
 from . import trim
 from . import merge
 from . import igblast
-from . import germ_gather
+from . import vdj_gather
 from .show import show_files, list_files
 
 LOGGER = logging.getLogger()
@@ -111,9 +111,9 @@ def _main_igblast(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
-def _main_germ_gather(args):
-    germ_gather.gather_germline(
-        db_paths=args.database,
+def _main_vdj_gather(args):
+    vdj_gather.vdj_gather(
+        db_paths=args.input,
         dir_path_out=args.outdir,
         dry_run=args.dry_run)
 
@@ -163,9 +163,9 @@ def __setup_arg_parser():
         help="Run IgBLAST on a set of sequences",
         description=rewrap(igblast.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    p_germ_gather= subps.add_parser("germ-gather",
-        help="Gather germline sequence references into one directory",
-        description=rewrap(germ_gather.__doc__),
+    p_vdj_gather= subps.add_parser("vdj-gather",
+        help="Gather VDJ sequences into one directory",
+        description=rewrap(vdj_gather.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
@@ -269,12 +269,12 @@ def __setup_arg_parser():
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
 
-    __add_common_args(p_germ_gather)
-    p_germ_gather.add_argument("-d", "--database", nargs="+",
-        help="one directory with one or more each of V, D, J FASTA.")
-    p_germ_gather.add_argument("-o", "--outdir",
+    __add_common_args(p_vdj_gather)
+    p_vdj_gather.add_argument("input", nargs="+",
+        help="one directory with one or more each of V, D, J FASTA files.")
+    p_vdj_gather.add_argument("-o", "--outdir",
         help="Output directory")
-    p_germ_gather.set_defaults(func=_main_germ_gather)
+    p_vdj_gather.set_defaults(func=_main_vdj_gather)
 
     return parser
 

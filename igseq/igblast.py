@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
-from . import germ_gather
+from . import vdj_gather
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
     # if db_paths is a single dir, find all fastas
     # if three files, use in order
     # if species given, use that, if not, try to parse from db_paths
-    paths = germ_gather.parse_vdj_paths(db_paths)
+    paths = vdj_gather.parse_vdj_paths(db_paths)
     LOGGER.info("detected db type: %s", paths["type"])
     LOGGER.info("detected db details: %s", {k: v for k, v in paths.items() if k != "type"})
 
@@ -42,7 +42,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
                         f_out.write(f_in.read())
         elif paths["type"] == "dir":
             if not dry_run:
-                germ_gather._gather_germline(paths["path"], tmp)
+                vdj_gather._vdj_gather(paths["path"], tmp)
         elif paths["type"] == "internal":
             if not species:
                 for key in SPECIESMAP:
@@ -53,7 +53,7 @@ def igblast(db_paths, query_path, species=None, dry_run=False, threads=1):
             if not species:
                 LOGGER.error("Could not determine species from database input %s", paths["path"])
             if not dry_run:
-                germ_gather._gather_germline(paths["path"], tmp)
+                vdj_gather._vdj_gather(paths["path"], tmp)
         if not species:
             LOGGER.error("Species is required")
             raise ValueError
