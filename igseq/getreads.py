@@ -11,18 +11,28 @@ This step can be skipped if you already have all of your reads in single trio
 of I1/R1/R2 fastq.gz files.
 """
 
-import gzip
 import logging
 import subprocess
 from tempfile import NamedTemporaryFile
 from pathlib import Path
+from csv import DictReader
+from . import util
 
 LOGGER = logging.getLogger(__name__)
 
 BCL2FASTQ = "bcl2fastq"
 
-def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False):
+def getreads(path_input, dir_out, path_counts="", threads_load=1, threads_proc=1, dry_run=False):
     """Get reads directly from Illumina run directory.
+
+    path_input: path to an Illumina run directory
+    dir_out: path to write fastq.gz files to
+    path_counts: path to csv to write read counts to.  If an empty
+                 string, dir_out/getreads.counts.csv is used.  If None, this
+                 file isn't written.
+    threads_load: number of threads for parallel loading
+    threads_proc: number of threads for parallel processing
+    dry_run: If True, don't actually call any commands or write any files.
 
     This is a wrapper around Illumina's bcl2fastq with its built-in
     demultiplexing features (mostly) disabled and the I1 output enabled.  All
@@ -44,6 +54,19 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
         dir_out = Path(dir_out)
     LOGGER.info("input: %s", path_input)
     LOGGER.info("output: %s", dir_out)
+
+    if path_counts == "":
+        path_counts = dir_out / "getreads.counts.csv"
+        LOGGER.info("path_counts inferred: %s", path_counts)
+    else:
+        LOGGER.info("path_counts: %s", path_counts)
+
+    # Choose a bcl2fastq log level based on our own curent level.  By default
+    # we'll be one increment less verbose, more or less.
+    log_levels = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL", "NONE"]
+    log_level = log_levels[
+        min(len(log_levels)-1, max(0, round(logging.getLogger().getEffectiveLevel()/10 + 1)))]
+    LOGGER.info("bcl2fastq log level: %s", log_level)
     if not dry_run:
         # We don't want any samples defined since we're just using the program
         # to convert .bcl to .fastq.gz (no demultiplexing).  We also don't want
@@ -77,9 +100,13 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
                 # help text says "this must not be higher than number of
                 # samples"
                 "--writing-threads", 1,
-                # it's pretty verbose by default so we'll set a higher log level
-                "--min-log-level", "WARNING"]
-            _run_bcl2fastq(args)
+                "--min-log-level", log_level]
+            try:
+                _run_bcl2fastq(args)
+            except subprocess.CalledProcessError as err:
+                msg = f"bcl2fastq exited with code {err.returncode}"
+                LOGGER.critical(msg)
+                raise util.IgSeqError(msg) from err
         # We should have three (I1/R1/R2 Undetermined) fastq.gz files.  If
         # there are more, maybe some reads got dumped to other "samples."  If
         # there are fewer...?
@@ -87,7 +114,38 @@ def getreads(path_input, dir_out, threads_load=1, threads_proc=1, dry_run=False)
         if len(fqgzs) > 3:
             LOGGER.warning("more .fastq.gz outputs than expected.")
         elif len(fqgzs) < 3:
-            LOGGER.error("Missing .fastq.gz outputs")
+            LOGGER.critical("Missing .fastq.gz outputs")
+        if not dry_run and path_counts:
+            try:
+                cts = count_bcl2fastq_reads(dir_out/"Stats/FastqSummaryF1L1.txt")
+            except FileNotFoundError as err:
+                LOGGER.critical("Missing FastqSummaryF1L1.txt output")
+            else:
+                cts = [{"Category": "getreads", "Item": k, "NumSeqs": v} for k, v in cts.items()]
+                util.save_counts(path_counts, cts)
+
+def count_bcl2fastq_reads(summary_txt):
+    """Summarize read counts from bcl2fastq's Stats/FastqSummaryF1L1.txt.
+
+    This gives a simple, flat dictionary output with read counts by category.
+
+    unassigned-raw: Number of reads not assigned to a sample, before filtering
+    unassigned-pf: Number of reads not assigned to a sample that pass filters
+    extra-raw: Number of reads assigned to a sample, before filtering
+    extra-pf: Number of reads assigned to a sample that pass filters
+    """
+
+    cts = {"unassigned-raw": 0, "unassigned-pf": 0, "extra-raw": 0, "extra-pf": 0}
+    with open(summary_txt) as f_in:
+        reader = DictReader(f_in, delimiter="\t")
+        for row in reader:
+            if row["SampleNumber"] == "0":
+                cts["unassigned-raw"] += row["NumberOfReadsRaw"]
+                cts["unassigned-pf"] += row["NumberOfReadsPF"]
+            else:
+                cts["extra-raw"] += row["NumberOfReadsRaw"]
+                cts["extra-pf"] += row["NumberOfReadsPF"]
+    return cts
 
 def _run_bcl2fastq(args):
     args = [BCL2FASTQ] + [str(arg) for arg in args]

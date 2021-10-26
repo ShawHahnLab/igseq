@@ -1,5 +1,5 @@
 """
-Utilities for IgSeq tasks.
+Utilities for common IgSeq tasks.
 """
 
 import sys
@@ -15,6 +15,7 @@ from . import merge
 from . import igblast
 from . import vdj_gather
 from .show import show_files, list_files
+from .util import IgSeqError
 
 LOGGER = logging.getLogger()
 
@@ -40,12 +41,21 @@ def main(arglist=None):
     if args.dry_run:
         prefix = "[DRYRUN] "
     _setup_log(args.verbose, args.quiet, prefix)
-    args.func(args)
+    try:
+        args.func(args)
+    except IgSeqError as err:
+        sys.stderr.write(
+            f"\nigseq failed because: {err.message}\n"
+            "Considering adding -v or -vv to the command if the problem isn't clear.\n")
+        sys.exit(1)
 
 def _main_getreads(args):
+    if args.no_counts:
+        args.countsfile = None
     getreads.getreads(
         path_input=args.input,
         dir_out=args.outdir,
+        path_counts=args.countsfile,
         threads_load=args.threads_load,
         threads_proc=args.threads,
         dry_run=args.dry_run)
@@ -136,7 +146,7 @@ def __setup_arg_parser():
         description=rewrap(__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     #__add_common_args(parser)
-    subps = parser.add_subparsers(help="sub-command help", description="igseq "
+    subps = parser.add_subparsers(metavar="", description="igseq "
             "features are split up into these sub-commands.  Call igseq "
             "subcommand --help to get more detailed information on each one.")
     p_get = subps.add_parser("getreads",
@@ -173,6 +183,10 @@ def __setup_arg_parser():
     __add_common_args(p_get)
     p_get.add_argument("input", help="one Illumina run directory")
     p_get.add_argument("-o", "--outdir", default="", help="Output directory")
+    p_get.add_argument("-c", "--countsfile", default="",
+        help="file to write read counts to (default: <outdir>/getreads.counts.csv)")
+    p_get.add_argument("--no-counts", action="store_true",
+        help="don't write a counts file")
     p_get.add_argument("-t", "--threads", type=int, default=28,
         help="number of threads for parallel processing (default: 28)")
     p_get.add_argument("--threads-load", type=int, default=4,

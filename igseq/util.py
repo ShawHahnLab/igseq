@@ -30,6 +30,11 @@ P5SEQ = "TCTTTCCCTACACGACGCTCTTCCGATCT"
 # comes just after forward barcode
 ANCHOR5P = "AAGCAGTGGTATCAACGCAGAGTACATGGG"
 
+class IgSeqError(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
 def load_samples(path_samples):
     """"Load a CSV of sample info into a per-sample dictionary."""
     samples = {}
