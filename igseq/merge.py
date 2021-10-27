@@ -99,7 +99,8 @@ def pear(r1_in, r2_in, outfile, threads, log_path=None, quiet=True):
             logtxt += txt
         pear_proc.wait()
         if pear_proc.returncode:
-            LOGGER.error("pear exited with code %s", pear_proc.returncode)
+            LOGGER.critical("pear exited with code %s", pear_proc.returncode)
+            raise util.IgSeqError("pear crashed")
 
     # compress the assembled output with the given filename and remove the
     # uncompressed version
