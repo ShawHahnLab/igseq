@@ -188,6 +188,12 @@ def _run_cutadapt_pair(args1, args2):
         Popen(args1, stdout=PIPE, stderr=DEVNULL) as proc1, \
         Popen(args2, stdin=proc1.stdout) as proc2:
         proc2.wait()
+        if proc1.returncode:
+            LOGGER.critical("cutadapt proc 1 exited with code %s", proc1.returncode)
+            raise util.IgSeqError("cutadapt crashed")
+        if proc2.returncode:
+            LOGGER.critical("cutadapt proc 2 exited with code %s", proc2.returncode)
+            raise util.IgSeqError("cutadapt crashed")
 
 def get_adapter_fwd(sample, species):
     """Get the adapter sequence to trim off the end of R1.
