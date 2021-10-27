@@ -5,6 +5,7 @@ Map reads unassigned after demultiplexing to the PhiX genome.
 import logging
 from subprocess import Popen, PIPE, DEVNULL
 from pathlib import Path
+from . import util
 from .util import DATA, default_path, save_counts, parse_fqgz_paths
 
 LOGGER = logging.getLogger(__name__)
@@ -73,6 +74,10 @@ def map_reads(ref_path, r1_path, r2_path, bam_out, threads):
         Popen(cmd_samtools_view, stdin=bwa.stdout, stdout=PIPE) as sam_view, \
         Popen(cmd_samtools_sort, stdin=sam_view.stdout, stdout=f_out) as sam_sort:
         sam_sort.wait()
+        for proc in [bwa, sam_view, sam_sort]:
+            if proc.returncode:
+                LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
+                raise util.IgSeqError(proc.args[0] + " crashed")
 
 def _count_bam_reads(bam_path):
     # https://qnot.org/2012/04/14/counting-the-number-of-reads-in-a-bam-file/
