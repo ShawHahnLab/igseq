@@ -14,6 +14,7 @@ from . import trim
 from . import merge
 from . import igblast
 from . import vdj_gather
+from . import tab2seq
 from .show import show_files, list_files
 from .util import IgSeqError
 
@@ -127,6 +128,17 @@ def _main_vdj_gather(args):
         dir_path_out=args.outdir,
         dry_run=args.dry_run)
 
+def _main_tab2seq(args):
+    tab2seq.tab2seq(
+        tab_path_in=args.input,
+        seq_path_out=args.output,
+        seq_col=args.seq_col,
+        seq_id_col=args.seq_id_col,
+        seq_desc_col=args.seq_desc_col,
+        qual_col=args.seq_qual_col,
+        tab_fmt=args.tab_fmt,
+        seq_fmt=args.seq_fmt)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -176,6 +188,10 @@ def __setup_arg_parser():
     p_vdj_gather= subps.add_parser("vdj-gather",
         help="Gather VDJ sequences into one directory",
         description=rewrap(vdj_gather.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_tab2seq = subps.add_parser("tab2seq",
+        help="Convert CSV/TSV to FASTA/FASTQ",
+        description=rewrap(tab2seq.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show", help="show builtin reference data")
     p_list = subps.add_parser("list", help="list builtin reference data files")
@@ -289,6 +305,28 @@ def __setup_arg_parser():
     p_vdj_gather.add_argument("-o", "--outdir",
         help="Output directory")
     p_vdj_gather.set_defaults(func=_main_vdj_gather)
+
+    __add_common_args(p_tab2seq)
+    p_tab2seq.add_argument("input",
+        help="one CSV or TSV file path, or a literal '-' for standard input")
+    p_tab2seq.add_argument("output",
+        help="one FASTA or FASTQ file path, or a literal '-' for standard output")
+    p_tab2seq.add_argument("--seq-col", required=True,
+        help="name of table column containing sequences")
+    p_tab2seq.add_argument("--seq-id-col", required=True,
+        help="name of table column containing sequence IDs")
+    p_tab2seq.add_argument("--seq-desc-col",
+        help="name of table column containing sequence descriptions (optional)")
+    p_tab2seq.add_argument("--seq-qual-col",
+        help="name of table column containing sequence quality "
+        "scores as PHRED+33 (for FASTQ output only)")
+    p_tab2seq.add_argument("--tab-fmt",
+            help="Format of input: tsv or csv.  "
+            "default is detected from input filename if possible")
+    p_tab2seq.add_argument("--seq-fmt",
+            help="Format of output: fasta or fastq.  "
+            "default is detected from output filename if possible")
+    p_tab2seq.set_defaults(func=_main_tab2seq)
 
     return parser
 
