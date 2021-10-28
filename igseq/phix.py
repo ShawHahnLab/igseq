@@ -3,6 +3,7 @@ Map reads unassigned after demultiplexing to the PhiX genome.
 """
 
 import logging
+import tempfile
 from subprocess import Popen, PIPE, DEVNULL
 from pathlib import Path
 from . import util
@@ -63,21 +64,23 @@ def map_reads(ref_path, r1_path, r2_path, bam_out, threads):
     bam_out: Path to write sorted BAM file containing mapped reads.
     threads: number of threads to use for parallel processing.
     """
-    cmd_bwa = [BWA, "mem", "-t", threads, ref_path, r1_path, r2_path]
-    cmd_samtools_view = [SAMTOOLS, "view", "-b", "-F", "0x4"]
-    cmd_samtools_sort = [SAMTOOLS, "sort", "-@", threads]
-    cmd_bwa = [str(obj) for obj in cmd_bwa]
-    cmd_samtools_view = [str(obj) for obj in cmd_samtools_view]
-    cmd_samtools_sort = [str(obj) for obj in cmd_samtools_sort]
-    with open(bam_out, "wb") as f_out, \
-        Popen(cmd_bwa, stdout=PIPE, stderr=DEVNULL) as bwa, \
-        Popen(cmd_samtools_view, stdin=bwa.stdout, stdout=PIPE) as sam_view, \
-        Popen(cmd_samtools_sort, stdin=sam_view.stdout, stdout=f_out) as sam_sort:
-        sam_sort.wait()
-        for proc in [bwa, sam_view, sam_sort]:
-            if proc.returncode:
-                LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
-                raise util.IgSeqError(proc.args[0] + " crashed")
+
+    with tempfile.TemporaryDirectory() as samtmp:
+        cmd_bwa = [BWA, "mem", "-t", threads, ref_path, r1_path, r2_path]
+        cmd_samtools_view = [SAMTOOLS, "view", "-b", "-F", "0x4"]
+        cmd_samtools_sort = [SAMTOOLS, "sort", "-T", samtmp, "-@", threads]
+        cmd_bwa = [str(obj) for obj in cmd_bwa]
+        cmd_samtools_view = [str(obj) for obj in cmd_samtools_view]
+        cmd_samtools_sort = [str(obj) for obj in cmd_samtools_sort]
+        with open(bam_out, "wb") as f_out, \
+            Popen(cmd_bwa, stdout=PIPE, stderr=DEVNULL) as bwa, \
+            Popen(cmd_samtools_view, stdin=bwa.stdout, stdout=PIPE) as sam_view, \
+            Popen(cmd_samtools_sort, stdin=sam_view.stdout, stdout=f_out) as sam_sort:
+            sam_sort.wait()
+            for proc in [bwa, sam_view, sam_sort]:
+                if proc.returncode:
+                    LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
+                    raise util.IgSeqError(proc.args[0] + " crashed")
 
 def _count_bam_reads(bam_path):
     # https://qnot.org/2012/04/14/counting-the-number-of-reads-in-a-bam-file/
