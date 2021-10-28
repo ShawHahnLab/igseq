@@ -92,7 +92,7 @@ def _run_makeblastdb(path_fasta):
     args = [str(arg) for arg in args]
     subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-def _run_igblastn(args):
+def _run_igblastn(args, **kwargs):
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
-    subprocess.run(args, check=True)
+    return subprocess.run(args, check=True, **kwargs)

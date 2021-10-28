@@ -45,22 +45,24 @@ def show_file(path, force=False):
 
 def show_csv(path):
     with open(path, encoding="UTF8") as f_in:
-        widths = {}
-        rows = []
         reader = DictReader(f_in)
-        for key in reader.fieldnames:
-            widths[key] = max(len(key), widths.get(key, 0))
-        for row in reader:
-            rows.append(row)
-            for key in row:
-                widths[key] = max(len(row[key]), widths.get(key, 0))
-        for key in reader.fieldnames:
-            print(key.rjust(widths[key]+1), end="")
+        show_grid(list(reader))
+
+def show_grid(grid):
+    fieldnames = grid[0].keys()
+    widths = {}
+    for key in fieldnames:
+        widths[key] = max(len(key), widths.get(key, 0))
+    for row in grid:
+        for key in row:
+            widths[key] = max(len(row[key]), widths.get(key, 0))
+    for key in fieldnames:
+        print(key.rjust(widths[key]+1), end="")
+    print("")
+    for row in grid:
+        for key in fieldnames:
+            print(row[key].rjust(widths[key]+1), end="")
         print("")
-        for row in rows:
-            for key in reader.fieldnames:
-                print(row[key].rjust(widths[key]+1), end="")
-            print("")
 
 def show_text(path):
     with open(path, encoding="UTF8") as f_in:

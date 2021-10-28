@@ -14,6 +14,7 @@ from . import trim
 from . import merge
 from . import igblast
 from . import vdj_gather
+from . import vdj_match
 from . import tab2seq
 from .show import show_files, list_files
 from .util import IgSeqError
@@ -128,6 +129,15 @@ def _main_vdj_gather(args):
         dir_path_out=args.outdir,
         dry_run=args.dry_run)
 
+def _main_vdj_match(args):
+    vdj_match.vdj_match(
+        db_paths=args.database,
+        query=args.query,
+        output=args.output,
+        showtxt=args.show,
+        species=args.species,
+        dry_run=args.dry_run)
+
 def _main_tab2seq(args):
     tab2seq.tab2seq(
         tab_path_in=args.input,
@@ -185,9 +195,13 @@ def __setup_arg_parser():
         help="Run IgBLAST on a set of sequences",
         description=rewrap(igblast.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    p_vdj_gather= subps.add_parser("vdj-gather",
+    p_vdj_gather = subps.add_parser("vdj-gather",
         help="Gather VDJ sequences into one directory",
         description=rewrap(vdj_gather.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_vdj_match = subps.add_parser("vdj-match",
+        help="Find closest-matching germline VDJ sequences",
+        description=rewrap(vdj_match.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_tab2seq = subps.add_parser("tab2seq",
         help="Convert CSV/TSV to FASTA/FASTQ",
@@ -289,12 +303,12 @@ def __setup_arg_parser():
     p_list.set_defaults(func=_main_list)
 
     __add_common_args(p_igblast)
-    p_igblast.add_argument("-Q", "--query",
+    p_igblast.add_argument("-Q", "--query", required=True,
         help="query FASTA")
     p_igblast.add_argument("-d", "--database", nargs="+",
         help="one directory or individual V/D/J FASTA files in order")
     p_igblast.add_argument("-S", "--species",
-            help="species to use (human or rhesus).  Default: infer from database")
+            help="species to use (human or rhesus).  Default: infer from database if possible")
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
@@ -305,6 +319,20 @@ def __setup_arg_parser():
     p_vdj_gather.add_argument("-o", "--outdir",
         help="Output directory")
     p_vdj_gather.set_defaults(func=_main_vdj_gather)
+
+    __add_common_args(p_vdj_match)
+    p_vdj_match.add_argument("-d", "--database", nargs="+",
+        help="one or more directories with one or more each of V, D, J FASTA files.")
+    p_vdj_match.add_argument("-Q", "--query", required=True,
+        help="query FASTA")
+    p_vdj_match.add_argument("-S", "--species",
+            help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_vdj_match.add_argument("-o", "--output",
+        help="Output filename")
+    p_vdj_match.add_argument("--show", action=argparse.BooleanOptionalAction,
+        help="Explicitly enable/disable showing the results directly on standard output "
+        "(default: disabled if using file output, enabled otherwise)")
+    p_vdj_match.set_defaults(func=_main_vdj_match)
 
     __add_common_args(p_tab2seq)
     p_tab2seq.add_argument("input",
