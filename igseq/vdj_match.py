@@ -104,6 +104,7 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
             output.parent.mkdir(parents=True, exist_ok=True)
             with open(output, "wt") as f_out:
                 writer = DictWriter(f_out, fieldnames=results[0].keys(), lineterminator="\n")
+                writer.writeheader()
                 writer.writerows(results)
 
 def _group_by_input_by_segment(vdj_path_attrs):
