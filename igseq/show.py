@@ -55,7 +55,7 @@ def show_grid(grid):
         widths[key] = max(len(key), widths.get(key, 0))
     for row in grid:
         for key in row:
-            widths[key] = max(len(row[key]), widths.get(key, 0))
+            widths[key] = max(len(str(row[key])), widths.get(key, 0))
     for key in fieldnames:
         print(key.rjust(widths[key]+1), end="")
     print("")
