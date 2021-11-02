@@ -2,7 +2,7 @@
 Find closest-matching VDJ sequences from one or more references.
 
 This uses IgBLAST to assign germline genes, but with a separate query for each
-database.
+reference specified as a separate database.
 """
 
 import logging
@@ -12,32 +12,41 @@ from io import StringIO
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from . import util
-from . import vdj_gather
 from . import igblast
 from . import show
+from . import vdj
 
 LOGGER = logging.getLogger(__name__)
 
-def vdj_match(db_paths, query,  output=None, showtxt=None, species=None, dry_run=False, threads=1):
-    LOGGER.info("given DB path(s): %s", db_paths)
+def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_run=False, threads=1):
+    LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query)
     LOGGER.info("given output: %s", output)
     LOGGER.info("given showtxt: %s", showtxt)
     LOGGER.info("given species: %s", species)
-    dbs = parse_vdj_paths(db_paths)
-    LOGGER.info("detected DBs: %d", len(dbs))
     # if not specified, show text when not saving output
     if showtxt is None:
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
+
+    vdj_files = vdj.parse_vdj_paths(ref_paths)
+    vdj_files_grouped = _group_by_input_by_segment(vdj_files)
+    for key, trio in vdj_files_grouped.items():
+        LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))
+        LOGGER.info("detected D FASTA from %s: %d", key, len(trio["D"]))
+        LOGGER.info("detected J FASTA from %s: %d", key, len(trio["J"]))
+        for segment, attrs in trio.items():
+            if not attrs:
+                LOGGER.critical("No FASTA for %s from %s", segment, key)
+                raise util.IgSeqError("Missing VDJ input for database")
+
     species_det = set()
-    for attrs in dbs:
-        LOGGER.info("detected db type: %s", attrs["type"])
-        LOGGER.info("detected db path: %s", attrs["path"])
+    for attrs in vdj_files:
+        LOGGER.info("detected ref path: %s", attrs["path"])
+        LOGGER.info("detected ref type: %s", attrs["type"])
         if attrs["type"] == "internal":
-            spec = attrs["path"].parent.name
-            LOGGER.info("detected db species: %s", spec)
-            species_det.add(spec)
+            LOGGER.info("detected db species: %s", attrs["species"])
+            species_det.add(attrs["species"])
     if not species and not species_det:
         raise util.IgSeqError(
             "species not detected from input.  specify a species manually.")
@@ -55,18 +64,21 @@ def vdj_match(db_paths, query,  output=None, showtxt=None, species=None, dry_run
     LOGGER.info("detected IgBLAST organism: %s", species_igblast)
     if not dry_run:
         results = []
-        for attrs in dbs:
+        for key, trio in vdj_files_grouped.items():
             with TemporaryDirectory() as tmp:
-                vdj_gather._vdj_gather(attrs["path"], tmp)
-                igblast._run_makeblastdb(f"{tmp}/V.fasta")
-                igblast._run_makeblastdb(f"{tmp}/D.fasta")
-                igblast._run_makeblastdb(f"{tmp}/J.fasta")
+                aux = f"{tmp}/{species_igblast}_gl.aux"
+                for segment, attrs_list in trio.items():
+                    fasta = f"{tmp}/{segment}.fasta"
+                    vdj.vdj_gather(attrs_list, fasta)
+                    if segment == "J":
+                        igblast.make_aux_file(fasta, aux)
+                igblast.makeblastdbs(tmp)
                 args = [
                     "-germline_db_V", f"{tmp}/V",
                     "-germline_db_D", f"{tmp}/D",
                     "-germline_db_J", f"{tmp}/J",
                     "-query", query,
-                    "-auxiliary_data", f"optional_file/{species_igblast}_gl.aux",
+                    "-auxiliary_data", aux,
                     "-organism", species_igblast,
                     "-ig_seqtype", "Ig",
                     "-outfmt", 19,
@@ -74,18 +86,14 @@ def vdj_match(db_paths, query,  output=None, showtxt=None, species=None, dry_run
                 proc = igblast._run_igblastn(args, stdout=subprocess.PIPE, text=True)
                 reader = DictReader(StringIO(proc.stdout), delimiter="\t")
                 for row in reader:
-                    if attrs["type"] == "internal":
-                        name = str(attrs["path"].relative_to(util.DATA / "germ"))
-                    else:
-                        name = str(attrs["path"])
                     for segment in ["v", "d", "j"]:
                         results.append({
                             "query": row["sequence_id"],
-                            "database": name,
+                            "reference": key,
                             "segment": segment.upper(),
                             "call": row[f"{segment}_call"],
                             "identity": row[f"{segment}_identity"]})
-        results = sorted(results, key=lambda r: (r["query"], r["database"]))
+        results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
             show.show_grid(results)
         if output:
@@ -95,38 +103,14 @@ def vdj_match(db_paths, query,  output=None, showtxt=None, species=None, dry_run
                 writer = DictWriter(f_out, fieldnames=results[0].keys(), lineterminator="\n")
                 writer.writerows(results)
 
-def parse_vdj_paths(db_paths):
-    # TODO unify with vdj_gather's version
-    parsed = []
-    for entry in db_paths:
-        internal_matches = get_internal_vdj(entry)
-        path = Path(entry)
-        # first priority: actual directory name
-        if path.is_dir():
-            parsed.append({
-                "type": "dir",
-                "path": path})
-        # second priority: internal reference
-        elif internal_matches:
-            for ref in internal_matches:
-                parsed.append({
-                    "type": "internal",
-                    "path": ref})
-        else:
-            raise util.IgSeqError(
-                "db path isn't a directory or an internal germline reference: %s" % entry)
-    return parsed
-
-def get_internal_vdj(name):
-    candidates = []
-    germ = util.DATA / "germ"
-    for path in germ.glob("*"):
-        if path.is_dir():
-            for subpath in path.glob("*"):
-                if subpath.is_dir():
-                    candidates.append(subpath)
-    output = []
-    for candidate in candidates:
-        if name in str(candidate.relative_to(germ)):
-            output.append(candidate)
-    return output
+def _group_by_input_by_segment(vdj_path_attrs):
+    # for prepping multiple separate databases (rather than one big one
+    # combining by segment)
+    refs = {}
+    for attrs in vdj_path_attrs:
+        # is this enough?
+        key = attrs["input"]
+        if key not in refs:
+            refs[key] = {s: [] for s in vdj.SEGMENTS}
+        refs[key][attrs["segment"]].append(attrs)
+    return refs

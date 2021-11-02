@@ -118,7 +118,8 @@ def _main_list(args):
 def _main_igblast(args):
     igblast.igblast(
         query_path=args.query,
-        db_paths=args.database,
+        ref_paths=args.reference,
+        db_path=args.database,
         species=args.species,
         dry_run=args.dry_run,
         threads=args.threads)
@@ -131,7 +132,7 @@ def _main_vdj_gather(args):
 
 def _main_vdj_match(args):
     vdj_match.vdj_match(
-        db_paths=args.database,
+        ref_paths=args.reference,
         query=args.query,
         output=args.output,
         showtxt=args.show,
@@ -305,8 +306,10 @@ def __setup_arg_parser():
     __add_common_args(p_igblast)
     p_igblast.add_argument("-Q", "--query", required=True,
         help="query FASTA")
-    p_igblast.add_argument("-d", "--database", nargs="+",
-        help="one directory or individual V/D/J FASTA files in order")
+    p_igblast.add_argument("-r", "--reference", nargs="+",
+            help="one or more FASTA/directory/builtin names pointing to V/D/J FASTA files")
+    p_igblast.add_argument("-d", "--database",
+            help="optional persistent database directory name (default: use temp directory)")
     p_igblast.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
@@ -321,8 +324,8 @@ def __setup_arg_parser():
     p_vdj_gather.set_defaults(func=_main_vdj_gather)
 
     __add_common_args(p_vdj_match)
-    p_vdj_match.add_argument("-d", "--database", nargs="+",
-        help="one or more directories with one or more each of V, D, J FASTA files.")
+    p_vdj_match.add_argument("-r", "--reference", nargs="+",
+        help="one or more FASTA/directory/builtin names pointing to V/D/J FASTA files")
     p_vdj_match.add_argument("-Q", "--query", required=True,
         help="query FASTA")
     p_vdj_match.add_argument("-S", "--species",
