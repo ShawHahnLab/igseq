@@ -11,6 +11,7 @@ import logging
 import csv
 from pathlib import Path
 import subprocess
+import shlex
 from tempfile import TemporaryDirectory
 from Bio import SeqIO
 from . import util
@@ -45,10 +46,11 @@ J_MOTIFS = {
 #   for external: add _path_to_each suffix
 # but wait, then the auxiliary data names don't match.
 
-def igblast(ref_paths, query_path, db_path=None, species=None, dry_run=False, threads=1):
+def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
     LOGGER.info("given species: %s", species)
+    LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
     vdj_files = vdj.parse_vdj_paths(ref_paths)
@@ -89,21 +91,8 @@ def igblast(ref_paths, query_path, db_path=None, species=None, dry_run=False, th
                 db_dir = Path(tmp)
             LOGGER.info("inferred DB directory: %s", db_dir)
             for segment, attrs_list in vdj_files_grouped.items():
-                # TODO modify IDs if needed (len(attrs_list)>1)
-                # this doesn't quite work because of IGH/IGK/IGL
                 fasta = db_dir/f"{segment}.fasta"
                 vdj.vdj_gather(attrs_list, fasta)
-                #with open(fasta, "wt") as f_out:
-                #    for attrs in attrs_list:
-                #        with open(attrs["path"]) as f_in:
-                #            for record in SeqIO.parse(f_in, "fasta"):
-                #                if len(attrs_list) > 1:
-                #                    if attrs["type"] == "internal":
-                #                        suffix = attrs["species"] + "_" + attrs["ref"]
-                #                    else:
-                #                        suffix = attrs["path"]
-                #                    record.id += "_" + suffix
-                #                SeqIO.write(record, f_out, "fasta-2line")
                 if segment == "J":
                     make_aux_file(fasta, db_dir/f"{species_igblast}_gl.aux")
             makeblastdbs(db_dir)
@@ -116,6 +105,8 @@ def igblast(ref_paths, query_path, db_path=None, species=None, dry_run=False, th
                 "-organism", species_igblast,
                 "-ig_seqtype", "Ig",
                 "-num_threads", threads]
+            if extra_args:
+                args += shlex.split(extra_args)
             _run_igblastn(args)
 
 def makeblastdbs(dir_path):

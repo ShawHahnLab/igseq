@@ -121,6 +121,7 @@ def _main_igblast(args):
         ref_paths=args.reference,
         db_path=args.database,
         species=args.species,
+        extra_args=args.extra_args,
         dry_run=args.dry_run,
         threads=args.threads)
 
@@ -312,6 +313,8 @@ def __setup_arg_parser():
             help="optional persistent database directory name (default: use temp directory)")
     p_igblast.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_igblast.add_argument("-e", "--extra-args",
+            help="extra igblastn arguments as a single string")
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)

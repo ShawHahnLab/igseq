@@ -87,11 +87,14 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
                 reader = DictReader(StringIO(proc.stdout), delimiter="\t")
                 for row in reader:
                     for segment in ["v", "d", "j"]:
+                        start = int(row[f"{segment}_sequence_start"])
+                        stop = int(row[f"{segment}_sequence_end"])
                         results.append({
                             "query": row["sequence_id"],
                             "reference": key,
                             "segment": segment.upper(),
                             "call": row[f"{segment}_call"],
+                            "length": start - stop + 1,
                             "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
