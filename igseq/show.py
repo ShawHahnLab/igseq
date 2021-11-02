@@ -61,7 +61,7 @@ def show_grid(grid):
     print("")
     for row in grid:
         for key in fieldnames:
-            print(row[key].rjust(widths[key]+1), end="")
+            print(str(row[key]).rjust(widths[key]+1), end="")
         print("")
 
 def show_text(path):
