@@ -94,7 +94,7 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
                             "reference": key,
                             "segment": segment.upper(),
                             "call": row[f"{segment}_call"],
-                            "length": start - stop + 1,
+                            "length": stop - start + 1,
                             "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
