@@ -11,7 +11,6 @@ import logging
 import csv
 from pathlib import Path
 import subprocess
-import shlex
 from tempfile import TemporaryDirectory
 from Bio import SeqIO
 from . import util
@@ -153,7 +152,7 @@ def setup_db_and_igblast(vdj_files_grouped, species_igblast, query_path,
             "-ig_seqtype", "Ig",
             "-num_threads", threads]
         if extra_args:
-            args += shlex.split(extra_args)
+            args += extra_args
         return _run_igblastn(args, **runargs)
 
 def makeblastdbs(dir_path):

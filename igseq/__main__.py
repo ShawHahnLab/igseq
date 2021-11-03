@@ -37,9 +37,9 @@ def main(arglist=None):
     """
     parser = __setup_arg_parser()
     if arglist is None:
-        args = parser.parse_args()
+        args, args_extra = parser.parse_known_args()
     else:
-        args = parser.parse_args(arglist)
+        args, args_extra = parser.parse_known_args(arglist)
     if not vars(args):
         parser.print_help()
         sys.exit(0)
@@ -48,7 +48,17 @@ def main(arglist=None):
         prefix = "[DRYRUN] "
     _setup_log(args.verbose, args.quiet, prefix)
     try:
-        args.func(args)
+        if args_extra:
+            # If there were unparsed arguments, see if we're in one of the
+            # commands (currently just igblast) that can take extra
+            # pass-through arguments.  If so pass them along, but if not, error
+            # out.
+            if args.func in [_main_igblast]:
+                args.func(args, args_extra)
+            else:
+                parser.parse_args(args_extra)
+        else:
+            args.func(args)
     except IgSeqError as err:
         sys.stderr.write(
             f"\nigseq failed because: {err.message}\n"
@@ -119,13 +129,13 @@ def _main_show(args):
 def _main_list(args):
     list_files(text_items=args.text)
 
-def _main_igblast(args):
+def _main_igblast(args, extra_igblastn_args=None):
     igblast.igblast(
         query_path=args.query,
         ref_paths=args.reference,
         db_path=args.database,
         species=args.species,
-        extra_args=args.extra_args,
+        extra_args=extra_igblastn_args,
         dry_run=args.dry_run,
         threads=args.threads)
 

@@ -36,7 +36,8 @@ def summarize(ref_paths, query, output=None, showtxt=None, species=None, dry_run
     if not dry_run:
         results = []
         proc = igblast.setup_db_and_igblast(
-            vdj_files_grouped, species_igblast, query, threads=threads, extra_args="-outfmt 19",
+            vdj_files_grouped, species_igblast, query, threads=threads,
+            extra_args=["-outfmt", "19"],
             stdout=subprocess.PIPE, text=True)
         reader = DictReader(StringIO(proc.stdout), delimiter="\t")
         lengthmap = {}
