@@ -13,6 +13,7 @@ from . import phix
 from . import trim
 from . import merge
 from . import igblast
+from . import summarize
 from . import vdj_gather
 from . import vdj_match
 from . import tab2seq
@@ -39,6 +40,9 @@ def main(arglist=None):
         args = parser.parse_args()
     else:
         args = parser.parse_args(arglist)
+    if not vars(args):
+        parser.print_help()
+        sys.exit(0)
     prefix = ""
     if args.dry_run:
         prefix = "[DRYRUN] "
@@ -125,6 +129,15 @@ def _main_igblast(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
+def _main_summarize(args):
+    summarize.summarize(
+        ref_paths=args.reference,
+        query=args.query,
+        output=args.output,
+        showtxt=args.show,
+        species=args.species,
+        dry_run=args.dry_run)
+
 def _main_vdj_gather(args):
     vdj_gather.vdj_gather(
         db_paths=args.input,
@@ -196,6 +209,10 @@ def __setup_arg_parser():
     p_igblast = subps.add_parser("igblast",
         help="Run IgBLAST on a set of sequences",
         description=rewrap(igblast.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_summarize = subps.add_parser("summarize",
+        help="Summarize attributes of antibody sequences in a table via IgBLAST",
+        description=rewrap(summarize.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_vdj_gather = subps.add_parser("vdj-gather",
         help="Gather VDJ sequences into one directory",
@@ -318,6 +335,20 @@ def __setup_arg_parser():
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
+
+    __add_common_args(p_summarize)
+    p_summarize.add_argument("-r", "--reference", nargs="+",
+        help="one or more FASTA/directory/builtin names pointing to V/D/J FASTA files")
+    p_summarize.add_argument("-Q", "--query", required=True,
+        help="query FASTA")
+    p_summarize.add_argument("-S", "--species",
+            help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_summarize.add_argument("-o", "--output",
+        help="Output filename")
+    p_summarize.add_argument("--show", action=argparse.BooleanOptionalAction,
+        help="Explicitly enable/disable showing the results directly on standard output "
+        "(default: disabled if using file output, enabled otherwise)")
+    p_summarize.set_defaults(func=_main_summarize)
 
     __add_common_args(p_vdj_gather)
     p_vdj_gather.add_argument("input", nargs="+",

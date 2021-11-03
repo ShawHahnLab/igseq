@@ -38,14 +38,6 @@ J_MOTIFS = {
     "JK": ["TTCGG", "TTTGG"],
     "JL": ["TTCGG", "TTCTG"]}
 
-
-# TODO: handle collisions between the entries.  makeblastdb will crash if there are duplicate IDs.
-# (duplicate seqs are fine, though; it'll just show multiple matches.)
-# maybe:
-#   for internal: add _species_ref suffix if there are multiple internal
-#   for external: add _path_to_each suffix
-# but wait, then the auxiliary data names don't match.
-
 def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
@@ -54,28 +46,7 @@ def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, 
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
     vdj_files = vdj.parse_vdj_paths(ref_paths)
-
-    species_det = set()
-    for attrs in vdj_files:
-        LOGGER.info("detected ref path: %s", attrs["path"])
-        LOGGER.info("detected ref type: %s", attrs["type"])
-        if attrs["type"] == "internal":
-            LOGGER.info("detected db species: %s", attrs["species"])
-            species_det.add(attrs["species"])
-    if not species and not species_det:
-        raise util.IgSeqError(
-            "species not detected from input.  specify a species manually.")
-    if not species and len(species_det) > 1:
-        raise util.IgSeqError(
-            "multiple species detected from input.  specify a species manually.")
-    if not species:
-        species = species_det.pop()
-        LOGGER.info("detected species: %s", species)
-    if species not in SPECIESMAP:
-        raise util.IgSeqError("Species not recognized: %s" % species)
-    species_igblast = SPECIESMAP[species]
-    LOGGER.info("species name for igblastn: %s", species_igblast)
-
+    species_igblast = _detect_species_alt(vdj_files, species)
     vdj_files_grouped = _group_by_segment(vdj_files)
     for key, attrs in vdj_files_grouped.items():
         LOGGER.info("detected %s references: %d", key, len(attrs))
@@ -108,6 +79,54 @@ def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, 
             if extra_args:
                 args += shlex.split(extra_args)
             _run_igblastn(args)
+
+def _detect_species(vdj_files, species):
+    species_det = set()
+    for attrs in vdj_files:
+        LOGGER.info("detected ref path: %s", attrs["path"])
+        LOGGER.info("detected ref type: %s", attrs["type"])
+        if attrs["type"] == "internal":
+            LOGGER.info("detected db species: %s", attrs["species"])
+            species_det.add(attrs["species"])
+    if not species and not species_det:
+        raise util.IgSeqError(
+            "species not detected from input.  specify a species manually.")
+    if not species and len(species_det) > 1:
+        raise util.IgSeqError(
+            "multiple species detected from input.  specify a species manually.")
+    if not species:
+        species = species_det.pop()
+        LOGGER.info("detected species: %s", species)
+    if species not in SPECIESMAP:
+        raise util.IgSeqError("Species not recognized: %s" % species)
+    species_igblast = SPECIESMAP[species]
+    LOGGER.info("species name for igblastn: %s", species_igblast)
+    return species_igblast
+
+def _detect_species_alt(vdj_files, species):
+    species_det = set()
+    for attrs in vdj_files:
+        LOGGER.info("detected ref path: %s", attrs["path"])
+        LOGGER.info("detected ref type: %s", attrs["type"])
+        if attrs["type"] == "internal":
+            LOGGER.info("detected db species: %s", attrs["species"])
+            species_det.add(attrs["species"])
+    if not species and not species_det:
+        raise util.IgSeqError(
+            "species not detected from input.  specify a species manually.")
+    if not species and len(species_det) > 1:
+        raise util.IgSeqError(
+            "multiple species detected from input.  specify a species manually.")
+    if not species:
+        species = species_det.pop()
+        LOGGER.info("detected species: %s", species)
+    try:
+        species_igblast = SPECIESMAP[species]
+    except KeyError as err:
+        keys = str(SPECIESMAP.keys())
+        raise util.IgSeqError("species not recognized.  should be one of: %s" % keys) from err
+    LOGGER.info("detected IgBLAST organism: %s", species_igblast)
+    return species_igblast
 
 def makeblastdbs(dir_path):
     for segment in ["V", "D", "J"]:

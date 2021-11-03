@@ -140,11 +140,11 @@ def count_bcl2fastq_reads(summary_txt):
         reader = DictReader(f_in, delimiter="\t")
         for row in reader:
             if row["SampleNumber"] == "0":
-                cts["unassigned-raw"] += row["NumberOfReadsRaw"]
-                cts["unassigned-pf"] += row["NumberOfReadsPF"]
+                cts["unassigned-raw"] += int(row["NumberOfReadsRaw"])
+                cts["unassigned-pf"] += int(row["NumberOfReadsPF"])
             else:
-                cts["extra-raw"] += row["NumberOfReadsRaw"]
-                cts["extra-pf"] += row["NumberOfReadsPF"]
+                cts["extra-raw"] += int(row["NumberOfReadsRaw"])
+                cts["extra-pf"] += int(row["NumberOfReadsPF"])
     return cts
 
 def _run_bcl2fastq(args):

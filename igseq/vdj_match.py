@@ -18,7 +18,7 @@ from . import vdj
 
 LOGGER = logging.getLogger(__name__)
 
-def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_run=False, threads=1):
+def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run=False, threads=1):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query)
     LOGGER.info("given output: %s", output)
@@ -28,8 +28,8 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
     if showtxt is None:
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
-
     vdj_files = vdj.parse_vdj_paths(ref_paths)
+    species_igblast = igblast._detect_species_alt(vdj_files, species)
     vdj_files_grouped = _group_by_input_by_segment(vdj_files)
     for key, trio in vdj_files_grouped.items():
         LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))
@@ -40,28 +40,6 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
                 LOGGER.critical("No FASTA for %s from %s", segment, key)
                 raise util.IgSeqError("Missing VDJ input for database")
 
-    species_det = set()
-    for attrs in vdj_files:
-        LOGGER.info("detected ref path: %s", attrs["path"])
-        LOGGER.info("detected ref type: %s", attrs["type"])
-        if attrs["type"] == "internal":
-            LOGGER.info("detected db species: %s", attrs["species"])
-            species_det.add(attrs["species"])
-    if not species and not species_det:
-        raise util.IgSeqError(
-            "species not detected from input.  specify a species manually.")
-    if not species and len(species_det) > 1:
-        raise util.IgSeqError(
-            "multiple species detected from input.  specify a species manually.")
-    if not species:
-        species = species_det.pop()
-        LOGGER.info("detected species: %s", species)
-    try:
-        species_igblast = igblast.SPECIESMAP[species]
-    except KeyError as err:
-        keys = str(igblast.SPECIESMAP.keys())
-        raise util.IgSeqError("species not recognized.  should be one of: %s" % keys) from err
-    LOGGER.info("detected IgBLAST organism: %s", species_igblast)
     if not dry_run:
         results = []
         for key, trio in vdj_files_grouped.items():
@@ -87,14 +65,18 @@ def vdj_match(ref_paths, query,  output=None, showtxt=None, species=None, dry_ru
                 reader = DictReader(StringIO(proc.stdout), delimiter="\t")
                 for row in reader:
                     for segment in ["v", "d", "j"]:
-                        start = int(row[f"{segment}_sequence_start"])
-                        stop = int(row[f"{segment}_sequence_end"])
+                        try:
+                            start = int(row[f"{segment}_sequence_start"])
+                            stop = int(row[f"{segment}_sequence_end"])
+                            length = stop - start + 1
+                        except ValueError:
+                            length = ""
                         results.append({
                             "query": row["sequence_id"],
                             "reference": key,
                             "segment": segment.upper(),
                             "call": row[f"{segment}_call"],
-                            "length": stop - start + 1,
+                            "length": length,
                             "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
