@@ -95,22 +95,9 @@ def parse_vdj_filename(txt):
     attrs.update(_parse_vdj_tokens(name_fields))
     return attrs
 
-def _parse_vdj_tokens(tokens):
-    # ["IGH", "blah", "V"] -> {"locus": "IGH", "segment": "V"}
-    attrs = {}
-    for token in tokens:
-        token = token.upper()
-        if token in LOCUS_SEGMENTS:
-            attrs["locus"] = token[0:3]
-            attrs["segment"] = token[3]
-            break
-        if not attrs.get("locus") and token in LOCI:
-            attrs["locus"] = token
-        if not attrs.get("segment") and token in SEGMENTS:
-            attrs["segment"] = token
-    return attrs
-
-def vdj_gather(attrs_list, fasta):
+def combine_vdj(attrs_list, fasta):
+    fasta = Path(fasta)
+    fasta.parent.mkdir(parents=True, exist_ok=True)
     with open(fasta, "wt") as f_out:
         by_locus = {"IGH": [], "IGK": [], "IGL": [], None: []}
         for attrs in attrs_list:
@@ -130,3 +117,32 @@ def vdj_gather(attrs_list, fasta):
                             suffix = attrs["path"]
                         record.id += "_" + suffix
                     SeqIO.write(record, f_out, "fasta-2line")
+
+def group(vdj_path_attrs, keyfunc=None):
+    groups = {}
+    for entry in vdj_path_attrs:
+        if keyfunc:
+            key = keyfunc(entry)
+        else:
+            key = "all"
+        if key not in groups:
+            groups[key] = {seg: [] for seg in SEGMENTS}
+        groups[key][entry["segment"]].append(entry)
+    if not keyfunc:
+        return groups["all"]
+    return groups
+
+def _parse_vdj_tokens(tokens):
+    # ["IGH", "blah", "V"] -> {"locus": "IGH", "segment": "V"}
+    attrs = {}
+    for token in tokens:
+        token = token.upper()
+        if token in LOCUS_SEGMENTS:
+            attrs["locus"] = token[0:3]
+            attrs["segment"] = token[3]
+            break
+        if not attrs.get("locus") and token in LOCI:
+            attrs["locus"] = token
+        if not attrs.get("segment") and token in SEGMENTS:
+            attrs["segment"] = token
+    return attrs

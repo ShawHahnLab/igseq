@@ -9,7 +9,6 @@ import logging
 import subprocess
 from csv import DictReader, DictWriter
 from io import StringIO
-from tempfile import TemporaryDirectory
 from pathlib import Path
 from . import util
 from . import igblast
@@ -29,8 +28,10 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
     vdj_files = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = igblast._detect_species_alt(vdj_files, species)
-    vdj_files_grouped = _group_by_input_by_segment(vdj_files)
+    species_igblast = igblast.detect_species(vdj_files, species)
+    vdj_files_grouped = vdj.group(
+        vdj_files,
+        lambda x: f"{x['species']}/{['ref']}" if x["type"] == "internal" else x["input"])
     for key, trio in vdj_files_grouped.items():
         LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))
         LOGGER.info("detected D FASTA from %s: %d", key, len(trio["D"]))
@@ -43,41 +44,25 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
     if not dry_run:
         results = []
         for key, trio in vdj_files_grouped.items():
-            with TemporaryDirectory() as tmp:
-                aux = f"{tmp}/{species_igblast}_gl.aux"
-                for segment, attrs_list in trio.items():
-                    fasta = f"{tmp}/{segment}.fasta"
-                    vdj.vdj_gather(attrs_list, fasta)
-                    if segment == "J":
-                        igblast.make_aux_file(fasta, aux)
-                igblast.makeblastdbs(tmp)
-                args = [
-                    "-germline_db_V", f"{tmp}/V",
-                    "-germline_db_D", f"{tmp}/D",
-                    "-germline_db_J", f"{tmp}/J",
-                    "-query", query,
-                    "-auxiliary_data", aux,
-                    "-organism", species_igblast,
-                    "-ig_seqtype", "Ig",
-                    "-outfmt", 19,
-                    "-num_threads", threads]
-                proc = igblast._run_igblastn(args, stdout=subprocess.PIPE, text=True)
-                reader = DictReader(StringIO(proc.stdout), delimiter="\t")
-                for row in reader:
-                    for segment in ["v", "d", "j"]:
-                        try:
-                            start = int(row[f"{segment}_sequence_start"])
-                            stop = int(row[f"{segment}_sequence_end"])
-                            length = stop - start + 1
-                        except ValueError:
-                            length = ""
-                        results.append({
-                            "query": row["sequence_id"],
-                            "reference": key,
-                            "segment": segment.upper(),
-                            "call": row[f"{segment}_call"],
-                            "length": length,
-                            "identity": row[f"{segment}_identity"]})
+            proc = igblast.setup_db_and_igblast(
+                trio, species_igblast, query, threads=threads, extra_args="-outfmt 19",
+                stdout=subprocess.PIPE, text=True)
+            reader = DictReader(StringIO(proc.stdout), delimiter="\t")
+            for row in reader:
+                for segment in ["v", "d", "j"]:
+                    try:
+                        start = int(row[f"{segment}_sequence_start"])
+                        stop = int(row[f"{segment}_sequence_end"])
+                        length = stop - start + 1
+                    except ValueError:
+                        length = ""
+                    results.append({
+                        "query": row["sequence_id"],
+                        "reference": key,
+                        "segment": segment.upper(),
+                        "call": row[f"{segment}_call"],
+                        "length": length,
+                        "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
             show.show_grid(results)
@@ -88,18 +73,3 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
                 writer = DictWriter(f_out, fieldnames=results[0].keys(), lineterminator="\n")
                 writer.writeheader()
                 writer.writerows(results)
-
-def _group_by_input_by_segment(vdj_path_attrs):
-    # for prepping multiple separate databases (rather than one big one
-    # combining by segment)
-    refs = {}
-    for attrs in vdj_path_attrs:
-        # is this enough?
-        if attrs["type"] == "internal":
-            key = attrs["species"] + "/" + attrs["ref"]
-        else:
-            key = attrs["input"]
-        if key not in refs:
-            refs[key] = {s: [] for s in vdj.SEGMENTS}
-        refs[key][attrs["segment"]].append(attrs)
-    return refs

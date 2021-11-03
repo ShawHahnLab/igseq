@@ -140,7 +140,7 @@ def _main_summarize(args):
 
 def _main_vdj_gather(args):
     vdj_gather.vdj_gather(
-        db_paths=args.input,
+        ref_paths=args.input,
         dir_path_out=args.outdir,
         dry_run=args.dry_run)
 
