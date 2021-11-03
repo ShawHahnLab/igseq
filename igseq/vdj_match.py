@@ -95,7 +95,10 @@ def _group_by_input_by_segment(vdj_path_attrs):
     refs = {}
     for attrs in vdj_path_attrs:
         # is this enough?
-        key = attrs["input"]
+        if attrs["type"] == "internal":
+            key = attrs["species"] + "/" + attrs["ref"]
+        else:
+            key = attrs["input"]
         if key not in refs:
             refs[key] = {s: [] for s in vdj.SEGMENTS}
         refs[key][attrs["segment"]].append(attrs)
