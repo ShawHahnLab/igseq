@@ -5,9 +5,12 @@ There are no user-facing commands in here.
 """
 
 import re
+import logging
 from pathlib import Path
 from Bio import SeqIO
 from . import util
+
+LOGGER = logging.getLogger(__name__)
 
 LOCI = ["IGH", "IGK", "IGL"]
 SEGMENTS = ["V", "D", "J"]
@@ -127,6 +130,7 @@ def group(vdj_path_attrs, keyfunc=None):
             key = "all"
         if key not in groups:
             groups[key] = {seg: [] for seg in SEGMENTS}
+        LOGGER.debug(f"grouping {entry['path']} as \"{key}\"")
         groups[key][entry["segment"]].append(entry)
     if not keyfunc:
         return groups["all"]
