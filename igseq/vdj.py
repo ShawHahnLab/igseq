@@ -117,7 +117,7 @@ def combine_vdj(attrs_list, fasta):
                         if attrs["type"] == "internal":
                             suffix = attrs["species"] + "_" + attrs["ref"]
                         else:
-                            suffix = attrs["path"]
+                            suffix = str(attrs["path"])
                         record.id += "_" + suffix
                     SeqIO.write(record, f_out, "fasta-2line")
 
