@@ -152,6 +152,11 @@ def setup_db_and_igblast(vdj_files_grouped, species_igblast, query_path,
             "-ig_seqtype", "Ig",
             "-num_threads", threads]
         if extra_args:
+            args_dashes = {arg for arg in args if str(arg).startswith("-")}
+            extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
+            shared = args_dashes & extra_dashes
+            if shared:
+                raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
             args += extra_args
         return _run_igblastn(args, **runargs)
 
