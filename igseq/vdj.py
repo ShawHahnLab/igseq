@@ -86,12 +86,9 @@ def parse_vdj_filename(txt):
     # "IGHV.fasta" -> {"path": "IGHV.fasta", "locus": "IGH", "segment": "V"}
     txt = str(txt)
     attrs = {"path": Path(txt)}
-    match = re.search(r"(.*)\.(fasta|fa|fna)", txt, flags=re.I)
-    if not match:
-        raise ValueError("VDJ path not recognized: %s" % txt)
-    prefix = match.group(1)
-    suffix = match.group(2).lower()
-    attrs["fasta"] = suffix in ["fasta", "fa", "fna"]
+    prefix = attrs["path"].stem
+    suffix = attrs["path"].suffix
+    attrs["fasta"] = suffix in [".fasta", ".fa", ".fna"]
     parents = [parent.name for parent in Path(txt).parents]
     attrs.update(_parse_vdj_tokens(parents))
     name_fields = re.split("[^A-Z]+", prefix)
@@ -103,14 +100,17 @@ def combine_vdj(attrs_list, fasta):
     fasta.parent.mkdir(parents=True, exist_ok=True)
     with open(fasta, "wt") as f_out:
         by_locus = {"IGH": [], "IGK": [], "IGL": [], None: []}
-        for attrs in attrs_list:
-            by_locus[attrs.get("locus")].append(attrs)
-        if by_locus[None]:
-            add_suffix = {key: True for key in by_locus}
+        if len(attrs_list) > 1:
+            for attrs in attrs_list:
+                by_locus[attrs.get("locus")].append(attrs)
+            if by_locus[None]:
+                add_suffix = {key: True for key in by_locus}
+            else:
+                add_suffix = {key: len(val) > 1 for key, val in by_locus.items()}
         else:
-            add_suffix = {key: len(val) > 1 for key, val in by_locus.items()}
+            add_suffix = None
         for attrs in attrs_list:
-            add_suffix_here = add_suffix[attrs.get("locus")]
+            add_suffix_here = add_suffix and add_suffix[attrs.get("locus")]
             with open(attrs["path"]) as f_in:
                 for record in SeqIO.parse(f_in, "fasta"):
                     if add_suffix_here:
