@@ -6,6 +6,7 @@ There are no user-facing commands in here.
 
 import re
 import logging
+from os import PathLike
 from pathlib import Path
 from Bio import SeqIO
 from . import util
@@ -23,6 +24,9 @@ def parse_vdj_paths(ref_paths):
     input, "some/dir" split into separate V/D/J FASTA found inside, and
     "rhesus" split into the built-in reference FASTAs provided by the package.
     """
+
+    if isinstance(ref_paths, (str, PathLike)):
+        ref_paths = [ref_paths]
     parsed = []
     for entry in ref_paths:
         internal_matches = get_internal_vdj(entry)
@@ -30,7 +34,7 @@ def parse_vdj_paths(ref_paths):
         # first priority: actual file name
         if path.is_file():
             attrs = parse_vdj_filename(path)
-            attrs["input"] = entry
+            attrs["input"] = str(entry)
             attrs["type"] = "file"
             if "segment" not in attrs:
                 raise ValueError("couldn't determine segment for file: %s" % path)
@@ -39,7 +43,7 @@ def parse_vdj_paths(ref_paths):
         if path.is_dir():
             for path2 in path.glob("*"):
                 attrs = parse_vdj_filename(path2)
-                attrs["input"] = entry
+                attrs["input"] = str(entry)
                 if attrs["fasta"]:
                     if "segment" not in attrs:
                         raise ValueError("couldn't determine segment for file: %s" % path)
@@ -47,30 +51,25 @@ def parse_vdj_paths(ref_paths):
                     parsed.append(attrs)
         # third priority: internal reference
         elif internal_matches:
-            for ref in internal_matches:
-                for fasta in ref.glob("**/*.fasta"):
-                    fasta_rel = fasta.relative_to(util.DATA / "germ")
-                    attrs = parse_vdj_filename(fasta_rel)
-                    attrs["input"] = entry
-                    attrs["path"] = fasta
-                    attrs["type"] = "internal"
-                    parents = [parent.name for parent in fasta_rel.parents if parent.name]
-                    attrs["species"] = parents[-1]
-                    attrs["ref"] = parents[-2]
-                    parsed.append(attrs)
+            for fasta in internal_matches:
+                fasta_rel = fasta.relative_to(util.DATA / "germ")
+                attrs = parse_vdj_filename(fasta_rel)
+                attrs["input"] = str(entry)
+                attrs["path"] = fasta
+                attrs["type"] = "internal"
+                parents = [parent.name for parent in fasta_rel.parents if parent.name]
+                attrs["species"] = parents[-1]
+                attrs["ref"] = parents[-2]
+                parsed.append(attrs)
         else:
             raise util.IgSeqError("ref path not recognized: %s" % entry)
     return parsed
 
 def get_internal_vdj(name):
-    """Get list builtin germline files matching a keyword."""
-    candidates = []
+    """Get list of builtin germline FASTA files matching a path fragment."""
+    name = str(name)
     germ = util.DATA / "germ"
-    for path in germ.glob("*"):
-        if path.is_dir():
-            for subpath in path.glob("*"):
-                if subpath.is_dir():
-                    candidates.append(subpath)
+    candidates = list(germ.glob("**/*.fasta"))
     output = []
     for candidate in candidates:
         if name in str(candidate.relative_to(germ)):
@@ -87,11 +86,11 @@ def parse_vdj_filename(txt):
     txt = str(txt)
     attrs = {"path": Path(txt)}
     prefix = attrs["path"].stem
-    suffix = attrs["path"].suffix
+    suffix = attrs["path"].suffix.lower()
     attrs["fasta"] = suffix in [".fasta", ".fa", ".fna"]
     parents = [parent.name for parent in Path(txt).parents]
     attrs.update(_parse_vdj_tokens(parents))
-    name_fields = re.split("[^A-Z]+", prefix)
+    name_fields = re.split("[^A-Za-z]+", prefix)
     attrs.update(_parse_vdj_tokens(name_fields))
     return attrs
 
