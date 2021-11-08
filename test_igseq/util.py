@@ -74,6 +74,7 @@ class TestBase(unittest.TestCase):
             self.skipTest("skipping tests with external commands")
         self.path = self.__setup_path()
         self.__startdir = os.getcwd()
+        self.maxDiff = None
 
     def tearDown(self):
         os.chdir(self.__startdir)
