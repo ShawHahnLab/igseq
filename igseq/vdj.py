@@ -41,7 +41,7 @@ def parse_vdj_paths(ref_paths):
             parsed.append(attrs)
         # second priority: actual directory name
         if path.is_dir():
-            for path2 in path.glob("*"):
+            for path2 in sorted(path.glob("*")):
                 attrs = parse_vdj_filename(path2)
                 attrs["input"] = str(entry)
                 if attrs["fasta"]:

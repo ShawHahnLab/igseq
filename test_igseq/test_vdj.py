@@ -13,9 +13,9 @@ class TestParseVDJPaths(TestBase):
         # paths.
         shared = {"fasta": True, "input": str(self.path/"input"), "type": "dir"}
         attrs_list_exp = [
-                {"path": self.path/"input/V.fasta", "segment": "V"},
                 {"path": self.path/"input/D.fasta", "segment": "D"},
-                {"path": self.path/"input/J.fasta", "segment": "J"}]
+                {"path": self.path/"input/J.fasta", "segment": "J"},
+                {"path": self.path/"input/V.fasta", "segment": "V"}]
         for attrs in attrs_list_exp:
             attrs.update(shared)
         # It should be able to take Path objects, strings, or lists
@@ -32,9 +32,9 @@ class TestParseVDJPaths(TestBase):
         # files, it should find those too
         shared = {"fasta": True, "input": str(self.path/"input"), "type": "dir"}
         attrs_list_exp = [
-                {"path": self.path/"input/V.fasta", "segment": "V"},
                 {"path": self.path/"input/D.fasta", "segment": "D"},
-                {"path": self.path/"input/J.fasta", "segment": "J"}]
+                {"path": self.path/"input/J.fasta", "segment": "J"},
+                {"path": self.path/"input/V.fasta", "segment": "V"}]
         for attrs in attrs_list_exp:
             attrs.update(shared)
         for locus_segment in sorted(["IGHV", "IGHD", "IGHJ", "IGKV", "IGKJ", "IGLV", "IGLJ"]):
