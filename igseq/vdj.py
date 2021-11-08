@@ -95,6 +95,7 @@ def parse_vdj_filename(txt):
     return attrs
 
 def combine_vdj(attrs_list, fasta):
+    """Combine FASTAs from a list from parse_vdj_paths into one file."""
     fasta = Path(fasta)
     fasta.parent.mkdir(parents=True, exist_ok=True)
     with open(fasta, "wt") as f_out:
@@ -118,9 +119,15 @@ def combine_vdj(attrs_list, fasta):
                         else:
                             suffix = str(attrs["path"])
                         record.id += "_" + suffix
+                        record.description=""
                     SeqIO.write(record, f_out, "fasta-2line")
 
 def group(vdj_path_attrs, keyfunc=None):
+    """Group list items from parse_vdj_paths in a dictionary.
+
+    The keys are the segments from each item, and optionally an outer grouping
+    using keys from the given keyfunc.
+    """
     groups = {}
     for entry in vdj_path_attrs:
         if keyfunc:
