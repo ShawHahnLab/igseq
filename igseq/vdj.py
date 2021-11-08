@@ -74,7 +74,7 @@ def get_internal_vdj(name):
     for candidate in candidates:
         if name in str(candidate.relative_to(germ)):
             output.append(candidate)
-    return output
+    return sorted(output)
 
 def parse_vdj_filename(txt):
     """Parse recognized VDJ fields in a filename into a dictionary.
