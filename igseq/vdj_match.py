@@ -44,8 +44,9 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
     if not dry_run:
         results = []
         for key, trio in vdj_files_grouped.items():
-            proc = igblast.setup_db_and_igblast(
-                trio, organism, query, threads=threads, extra_args=["-outfmt", "19"],
+            paths = [attrs["path"] for attrs in trio["V"] + trio["D"] + trio["J"]]
+            proc = igblast.setup_db_dir_and_igblast(
+                paths, organism, query, threads=threads, extra_args=["-outfmt", "19"],
                 stdout=subprocess.PIPE, text=True)
             reader = DictReader(StringIO(proc.stdout), delimiter="\t")
             for row in reader:

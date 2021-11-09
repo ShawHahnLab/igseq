@@ -57,24 +57,23 @@ def igblast(
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
         LOGGER.info("detected ref type: %s", attrs["type"])
-    species_det = {attrs.get("species") for attrs in attrs_list}
-    species_det = {s for s in species_det if s}
-    organism = detect_organism(species_det, species)
+    organism = detect_organism(attrs_list, species)
     if not dry_run:
         setup_db_dir_and_igblast(
             [attrs["path"] for attrs in attrs_list],
             organism, query_path, db_path, threads, extra_args)
 
-def detect_organism(species_det, species=None):
+def detect_organism(attrs_list, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
 
-    species_det: set of inferred species names
+    attrs_list: output from vdj.parse_vdj_paths
     species: optional overriding species name
 
     This includes some fuzzy matching so things like "rhesus_monkey", "RHESUS",
     "rhesus" will all map to "rhesus_monkey" for IgBLAST.
     """
-    species_det = set(species_det)
+    species_det = {attrs.get("species") for attrs in attrs_list}
+    species_det = {s for s in species_det if s}
     if not species and not species_det:
         raise util.IgSeqError(
             "species not detected from input.  specify a species manually.")

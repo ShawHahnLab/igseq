@@ -126,7 +126,7 @@ def combine_vdj_by_attrs(attrs_list, fasta):
                         record.description=""
                     SeqIO.write(record, f_out, "fasta-2line")
 
-def combine_vdj(fastas_in, dir_out, csv_lookup_table=None):
+def combine_vdj(fastas_in, dir_out, csv_lookup_table=None, dry_run=False):
     """Combine FASTAs from a list into a trio of V/D/J files.
 
     fastas_in: list of paths to individual FASTA files
@@ -134,6 +134,7 @@ def combine_vdj(fastas_in, dir_out, csv_lookup_table=None):
                       multiple files are given with entries for the same locus
                       and segment this maps modified sequence IDs used here to
                       the original ID and input file.
+    dry_run: If True, don't actually write any files
     """
     # totally different approach from the other functions here: parse the
     # details from each sequence ID.
@@ -141,6 +142,8 @@ def combine_vdj(fastas_in, dir_out, csv_lookup_table=None):
     if not csv_lookup_table:
         csv_lookup_table = dir_out / "seqids.csv"
     csv_lookup_table = Path(csv_lookup_table)
+    fastas_out = {segment: dir_out/f"{segment}.fasta" for segment in SEGMENTS}
+
     attrs_list = []
     for fasta_in in fastas_in:
         for record in SeqIO.parse(fasta_in, "fasta"):
@@ -149,7 +152,7 @@ def combine_vdj(fastas_in, dir_out, csv_lookup_table=None):
             attrs["seq"] = str(record.seq)
             attrs_list.append(attrs)
 
-    # modify IDs where needing, using a lookup table from segments to FASTA
+    # modify IDs where needed, using a lookup table from segments to FASTA
     # paths.  segments with multiple paths will get a suffix appended for each
     # ID, if needed, to differentiate.
     path_suffix_lut = _make_seqid_suffix_lut(attrs_list)
@@ -161,27 +164,28 @@ def combine_vdj(fastas_in, dir_out, csv_lookup_table=None):
         attrs["seqid_here"] = seqid_here
 
     # write output: both the FASTA trio and the lookup table as CSV
-    csv_lookup_table.parent.mkdir(parents=True, exist_ok=True)
-    dir_out.mkdir(parents=True, exist_ok=True)
-    with open(csv_lookup_table, "wt") as csv_out:
-        writer = csv.DictWriter(
-            csv_out,
-            fieldnames=["sequence_id", "sequence_id_original", "input_path"],
-            lineterminator="\n")
-        writer.writeheader()
-        for segment, attrs_group in group(attrs_list).items():
-            attrs_group = sorted(
-                attrs_group,
-                key=lambda r: (r["path"], r["locus"], r["segment"], r["family"], r["seqid"]))
-            with open(dir_out/f"{segment}.fasta", "wt") as f_out:
-                for attrs in attrs_group:
-                    SeqIO.write(
-                        SeqRecord(Seq(attrs["seq"]), id=attrs["seqid_here"], description=""),
-                        f_out, "fasta-2line")
-                    writer.writerow({
-                        "sequence_id": attrs["seqid_here"],
-                        "sequence_id_original": attrs["seqid"],
-                        "input_path": attrs["path"]})
+    if not dry_run:
+        csv_lookup_table.parent.mkdir(parents=True, exist_ok=True)
+        dir_out.mkdir(parents=True, exist_ok=True)
+        with open(csv_lookup_table, "wt") as csv_out:
+            writer = csv.DictWriter(
+                csv_out,
+                fieldnames=["sequence_id", "sequence_id_original", "input_path"],
+                lineterminator="\n")
+            writer.writeheader()
+            for segment, attrs_group in group(attrs_list).items():
+                attrs_group = sorted(
+                    attrs_group,
+                    key=lambda r: (r["path"], r["locus"], r["segment"], r["family"], r["seqid"]))
+                with open(fastas_out[segment], "wt") as f_out:
+                    for attrs in attrs_group:
+                        SeqIO.write(
+                            SeqRecord(Seq(attrs["seq"]), id=attrs["seqid_here"], description=""),
+                            f_out, "fasta-2line")
+                        writer.writerow({
+                            "sequence_id": attrs["seqid_here"],
+                            "sequence_id_original": attrs["seqid"],
+                            "input_path": attrs["path"]})
     return attrs_list
 
 def _make_seqid_suffix_lut(attrs_list):
@@ -193,6 +197,10 @@ def _make_seqid_suffix_lut(attrs_list):
         segment_path_lut[attrs["segment"]].add(attrs["path"])
     path_suffix_lut = {}
     for paths in segment_path_lut.values():
+        if len(paths) == 1:
+            # we only need to worry about any of this if there's more than one
+            # path
+            continue
         internal = set()
         external = set()
         for path in paths:
@@ -201,7 +209,10 @@ def _make_seqid_suffix_lut(attrs_list):
             else:
                 external.add(path)
         for path in paths:
-            if not (path in external and len(external) == 1):
+            if path in external and len(external) == 1:
+                # special case: with just one external ref we don't need a suffix
+                pass
+            else:
                 if path in internal:
                     fasta_rel = Path(path).relative_to(util.DATA/"germ")
                     parents = [parent.name for parent in fasta_rel.parents if parent.name]
