@@ -1,7 +1,9 @@
 """Utils for the tests, not tests for igseq.util."""
 
 import unittest
+import shutil
 import random
+from tempfile import TemporaryDirectory
 from pathlib import Path
 import os
 import gzip
@@ -73,11 +75,20 @@ class TestBase(unittest.TestCase):
         if isinstance(self, TestLive) and not LIVE:
             self.skipTest("skipping tests with external commands")
         self.path = self.__setup_path()
+        self.__tmp = TemporaryDirectory()
+        self.tmp = Path(self.__tmp.name)
         self.__startdir = os.getcwd()
         self.maxDiff = None
 
     def tearDown(self):
+        # adapted from https://stackoverflow.com/a/39606065
+        result = self.defaultTestResult()
+        self._feedErrorsToResult(result, self._outcome.errors)
+        if result.errors or result.failures:
+            shutil.copytree(self.tmp, Path("/tmp/igseq-testdirs")/str(self.tmp).lstrip("/"))
+        self.__tmp.cleanup()
         os.chdir(self.__startdir)
+
 
     def __setup_path(self):
         """Path for supporting files for each class."""

@@ -28,3 +28,6 @@ jobs:
             cd igseq
             source ~/miniconda3/bin/activate igseq
             TEST_IGSEQ_LIVE=no python -m unittest -v
+      - store_artifacts:
+          path: /tmp/igseq-testdirs
+          destination: igseq-testdirs

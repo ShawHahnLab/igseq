@@ -100,10 +100,9 @@ class TestCombineVDJ(TestBase):
         # to the output.
         attrs_list = [{
             "path": self.path/"input/V.fasta", "segment": "V", "fasta": True, "type": "file"}]
-        with TemporaryDirectory() as tmp:
-            fasta = Path(tmp)/"output/V.fasta"
-            vdj.combine_vdj(attrs_list, fasta)
-            self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
+        fasta = self.tmp/"output/V.fasta"
+        vdj.combine_vdj(attrs_list, fasta)
+        self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
 
 
 class TestCombineVDJWithInternal(TestBase):
@@ -126,10 +125,9 @@ class TestCombineVDJWithInternal(TestBase):
             'ref': 'imgt',
             'segment': "V",
             'species': 'rhesus'})
-        with TemporaryDirectory() as tmp:
-            fasta = Path(tmp)/"output/V.fasta"
-            vdj.combine_vdj(attrs_list, fasta)
-            self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
+        fasta = self.tmp/"output/V.fasta"
+        vdj.combine_vdj(attrs_list, fasta)
+        self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
 
 
 class TestGroup(TestBase):
