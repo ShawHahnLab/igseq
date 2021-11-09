@@ -25,24 +25,24 @@ def summarize(ref_paths, query, output=None, showtxt=None, species=None, dry_run
     if showtxt is None:
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
-    vdj_files = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = igblast.detect_species(vdj_files, species)
-    vdj_files_grouped = vdj.group(vdj_files)
-    for key, attrs in vdj_files_grouped.items():
-        LOGGER.info("detected %s references: %d", key, len(attrs))
-        if len(attrs) == 0:
+    attrs_list = vdj.parse_vdj_paths(ref_paths)
+    species_igblast = igblast.detect_species(attrs_list, species)
+    attrs_list_grouped = vdj.group(attrs_list)
+    for key, attrs_group in attrs_list_grouped.items():
+        LOGGER.info("detected %s references: %d", key, len(attrs_group))
+        if len(attrs_group) == 0:
             raise util.IgSeqError("No references for segment %s" % key)
 
     if not dry_run:
         results = []
         proc = igblast.setup_db_and_igblast(
-            vdj_files_grouped, species_igblast, query, threads=threads,
+            attrs_list_grouped, species_igblast, query, threads=threads,
             extra_args=["-outfmt", "19"],
             stdout=subprocess.PIPE, text=True)
         reader = DictReader(StringIO(proc.stdout), delimiter="\t")
         lengthmap = {}
-        for attrs_list in vdj_files_grouped.values():
-            for attrs in attrs_list:
+        for attrs_group in attrs_list_grouped.values():
+            for attrs in attrs_group:
                 with open(attrs["path"]) as f_in:
                     for record in SeqIO.parse(f_in, "fasta"):
                         lengthmap[record.id] = len(record)

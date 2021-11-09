@@ -27,10 +27,10 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
     if showtxt is None:
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
-    vdj_files = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = igblast.detect_species(vdj_files, species)
+    attrs_list = vdj.parse_vdj_paths(ref_paths)
+    species_igblast = igblast.detect_species(attrs_list, species)
     vdj_files_grouped = vdj.group(
-        vdj_files,
+        attrs_list,
         lambda x: f"{x['species']}/{x['ref']}" if x["type"] == "internal" else x["input"])
     for key, trio in vdj_files_grouped.items():
         LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))

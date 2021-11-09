@@ -27,7 +27,7 @@ def parse_vdj_paths(ref_paths):
 
     if isinstance(ref_paths, (str, PathLike)):
         ref_paths = [ref_paths]
-    parsed = []
+    attrs_list = []
     for entry in ref_paths:
         internal_matches = get_internal_vdj(entry)
         path = Path(entry)
@@ -38,7 +38,7 @@ def parse_vdj_paths(ref_paths):
             attrs["type"] = "file"
             if "segment" not in attrs:
                 raise ValueError("couldn't determine segment for file: %s" % path)
-            parsed.append(attrs)
+            attrs_list.append(attrs)
         # second priority: actual directory name
         if path.is_dir():
             for path2 in sorted(path.glob("*")):
@@ -48,7 +48,7 @@ def parse_vdj_paths(ref_paths):
                     if "segment" not in attrs:
                         raise ValueError("couldn't determine segment for file: %s" % path)
                     attrs["type"] = "dir"
-                    parsed.append(attrs)
+                    attrs_list.append(attrs)
         # third priority: internal reference
         elif internal_matches:
             for fasta in internal_matches:
@@ -60,10 +60,10 @@ def parse_vdj_paths(ref_paths):
                 parents = [parent.name for parent in fasta_rel.parents if parent.name]
                 attrs["species"] = parents[-1]
                 attrs["ref"] = parents[-2]
-                parsed.append(attrs)
+                attrs_list.append(attrs)
         else:
             raise util.IgSeqError("ref path not recognized: %s" % entry)
-    return parsed
+    return attrs_list
 
 def get_internal_vdj(name):
     """Get list of builtin germline FASTA files matching a path fragment."""
@@ -122,14 +122,14 @@ def combine_vdj(attrs_list, fasta):
                         record.description=""
                     SeqIO.write(record, f_out, "fasta-2line")
 
-def group(vdj_path_attrs, keyfunc=None):
+def group(attrs_list, keyfunc=None):
     """Group list items from parse_vdj_paths in a dictionary.
 
     The keys are the segments from each item, and optionally an outer grouping
     using keys from the given keyfunc.
     """
     groups = {}
-    for entry in vdj_path_attrs:
+    for entry in attrs_list:
         if keyfunc:
             key = keyfunc(entry)
         else:

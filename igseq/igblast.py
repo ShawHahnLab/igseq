@@ -26,28 +26,47 @@ SPECIESMAP = {
     "rhesus": "rhesus_monkey",
     "human": "human"}
 
-# lifted from https://github.com/scharch/SONAR/blob/master/annotate/1.3-finalize_assignments.py
-J_MOTIF_REGEX = {
-    "JH": "TGGGG",
-    "JK": "TT[C|T][G|A]G",
-    "JL": "TT[C|T][G|A]G"}
+# from synonyms to our generic names
+SPECIESOTHER = {
+    "human": "human",
+    "homosapiens": "human",
+    "rhesus": "rhesus",
+    "rhesusmonkey": "rhesus"}
 
+# Used to autogenerate the IgBlast "auxiliary data file" with details like CDR3
+# 3' boundaries.
+# https://ncbi.github.io/igblast/cook/How-to-set-up.html
 # Adapter from SONAR approach but using alignments instead of regex
+# See: https://github.com/scharch/SONAR/blob/master/annotate/1.3-finalize_assignments.py
 J_MOTIFS = {
     "JH": ["TGGGG"],
     "JK": ["TTCGG", "TTTGG"],
     "JL": ["TTCGG", "TTCTG"]}
 
-def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
+def igblast(
+    ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
+    """Make temporary IgBLAST DB files and run a query against them.
+
+    ref_paths: list of FASTA files/directories/built-in reference names to use
+               for the databases
+    query_path: path to FASTA with sequences to check
+    db_path: If given, store database files in this directory name and don't
+             remove them after running
+    species: species name ("human" or "rhesus")
+    extra_args: list of arguments to pass to igblastn command.  Must not
+                overlap with the arguments set here.
+    dry_run: If True, don't actually call any commands or write any files
+    threads: number of threads for parallel processing
+    """
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
     LOGGER.info("given species: %s", species)
     LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
-    vdj_files = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = detect_species(vdj_files, species)
-    vdj_files_grouped = vdj.group(vdj_files)
+    attrs_list = vdj.parse_vdj_paths(ref_paths)
+    species_igblast = detect_species(attrs_list, species)
+    vdj_files_grouped = vdj.group(attrs_list)
     for key, attrs in vdj_files_grouped.items():
         LOGGER.info("detected %s references: %d", key, len(attrs))
         if len(attrs) == 0:
@@ -56,9 +75,9 @@ def igblast(ref_paths, query_path, db_path=None, species=None, extra_args=None, 
         setup_db_and_igblast(
             vdj_files_grouped, species_igblast, query_path, db_path, threads, extra_args)
 
-def detect_species(vdj_files, species):
+def detect_species(attrs_list, species=None):
     species_det = set()
-    for attrs in vdj_files:
+    for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
         LOGGER.info("detected ref type: %s", attrs["type"])
         if attrs["type"] == "internal":
@@ -73,6 +92,13 @@ def detect_species(vdj_files, species):
     if not species:
         species = species_det.pop()
         LOGGER.info("detected species: %s", species)
+    # match species names if needed
+    species_key = re.sub("[^a-z]", "", species.lower())
+    if species not in SPECIESMAP and species_key in SPECIESOTHER:
+        species_new = SPECIESOTHER[species_key]
+        LOGGER.info(
+            "detected species as synonym: %s -> %s -> %s", species, species_key, species_new)
+        species = species_new
     try:
         species_igblast = SPECIESMAP[species]
     except KeyError as err:
