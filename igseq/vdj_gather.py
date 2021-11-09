@@ -9,7 +9,6 @@ differentiate them.
 """
 
 import logging
-from pathlib import Path
 from . import vdj
 
 LOGGER = logging.getLogger(__name__)
