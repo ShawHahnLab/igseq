@@ -340,8 +340,6 @@ def __setup_arg_parser():
             help="optional persistent database directory name (default: use temp directory)")
     p_igblast.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
-    p_igblast.add_argument("-e", "--extra-args",
-            help="extra igblastn arguments as a single string")
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
@@ -363,7 +361,7 @@ def __setup_arg_parser():
     __add_common_args(p_vdj_gather)
     p_vdj_gather.add_argument("input", nargs="+",
         help="one directory with one or more each of V, D, J FASTA files.")
-    p_vdj_gather.add_argument("-o", "--outdir",
+    p_vdj_gather.add_argument("-o", "--outdir", required=True,
         help="Output directory")
     p_vdj_gather.set_defaults(func=_main_vdj_gather)
 
