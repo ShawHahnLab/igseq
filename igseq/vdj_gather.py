@@ -23,4 +23,4 @@ def vdj_gather(ref_paths, dir_path_out, dry_run=False):
     for segment, attrs_group in attrs_list_grouped.items():
         LOGGER.info("detected %s FASTA: %d", segment, len(attrs_group))
         if not dry_run:
-            vdj.combine_vdj(attrs_group, Path(dir_path_out)/f"{segment}.fasta")
+            vdj.combine_vdj_by_attrs(attrs_group, Path(dir_path_out)/f"{segment}.fasta")

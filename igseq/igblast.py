@@ -8,12 +8,11 @@ run igblastn with a query FASTA.
 
 import re
 import logging
-import csv
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
-from Bio import SeqIO
 from . import util
+from . import aux
 from . import vdj
 
 LOGGER = logging.getLogger(__name__)
@@ -33,19 +32,9 @@ SPECIESOTHER = {
     "rhesus": "rhesus",
     "rhesusmonkey": "rhesus"}
 
-# Used to autogenerate the IgBlast "auxiliary data file" with details like CDR3
-# 3' boundaries.
-# https://ncbi.github.io/igblast/cook/How-to-set-up.html
-# Adapter from SONAR approach but using alignments instead of regex
-# See: https://github.com/scharch/SONAR/blob/master/annotate/1.3-finalize_assignments.py
-J_MOTIFS = {
-    "JH": ["TGGGG"],
-    "JK": ["TTCGG", "TTTGG"],
-    "JL": ["TTCGG", "TTCTG"]}
-
 def igblast(
     ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
-    """Make temporary IgBLAST DB files and run a query against them.
+    """Make temporary IgBLAST DB files and run a query with them.
 
     ref_paths: list of FASTA files/directories/built-in reference names to use
                for the databases
@@ -65,24 +54,27 @@ def igblast(
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
     attrs_list = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = detect_species(attrs_list, species)
-    vdj_files_grouped = vdj.group(attrs_list)
-    for key, attrs in vdj_files_grouped.items():
-        LOGGER.info("detected %s references: %d", key, len(attrs))
-        if len(attrs) == 0:
-            raise util.IgSeqError("No references for segment %s" % key)
-    if not dry_run:
-        setup_db_and_igblast(
-            vdj_files_grouped, species_igblast, query_path, db_path, threads, extra_args)
-
-def detect_species(attrs_list, species=None):
-    species_det = set()
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
         LOGGER.info("detected ref type: %s", attrs["type"])
-        if attrs["type"] == "internal":
-            LOGGER.info("detected db species: %s", attrs["species"])
-            species_det.add(attrs["species"])
+    species_det = {attrs.get("species") for attrs in attrs_list}
+    species_det = {s for s in species_det if s}
+    organism = detect_organism(species_det, species)
+    if not dry_run:
+        setup_db_dir_and_igblast(
+            [attrs["path"] for attrs in attrs_list],
+            organism, query_path, db_path, threads, extra_args)
+
+def detect_organism(species_det, species=None):
+    """Determine IgBLAST organism name from multiple species name inputs
+
+    species_det: set of inferred species names
+    species: optional overriding species name
+
+    This includes some fuzzy matching so things like "rhesus_monkey", "RHESUS",
+    "rhesus" will all map to "rhesus_monkey" for IgBLAST.
+    """
+    species_det = set(species_det)
     if not species and not species_det:
         raise util.IgSeqError(
             "species not detected from input.  specify a species manually.")
@@ -100,84 +92,43 @@ def detect_species(attrs_list, species=None):
             "detected species as synonym: %s -> %s -> %s", species, species_key, species_new)
         species = species_new
     try:
-        species_igblast = SPECIESMAP[species]
+        organism = SPECIESMAP[species]
     except KeyError as err:
         keys = str(SPECIESMAP.keys())
         raise util.IgSeqError("species not recognized.  should be one of: %s" % keys) from err
-    LOGGER.info("detected IgBLAST organism: %s", species_igblast)
-    return species_igblast
+    LOGGER.info("detected IgBLAST organism: %s", organism)
+    return organism
 
-def make_aux_file(j_fasta_in, aux_txt_out):
-    """Autogenerate an IgBLAST auxiliary data file from a J FASTA."""
-    with open(j_fasta_in) as f_in, open(aux_txt_out, "wt") as f_out:
-        writer = csv.writer(f_out, delimiter="\t", lineterminator="\n")
-        for record in SeqIO.parse(f_in, "fasta"):
-            # NOTE: positions are 0-based!
-            # fields are:
-            # gene/allele name
-            # first coding frame start position
-            # chain type
-            # CDR3 stop
-            # extra bps beyond J coding end
-            match = re.match("IG([HKL])J", record.id)
-            if not match:
-                match = re.match("J([HKL])", record.id)
-                if not match:
-                    LOGGER.warning("Sequence ID not recognized: %s", record.id)
-                    continue
-            chain_type = "J" + match.group(1)
-            match = _best_motif_match(record.seq, J_MOTIFS[chain_type])
-            cdr3_stop = match[0] - 1
-            frame = (cdr3_stop + 1) % 3
-            extra_bps = (len(record.seq) - frame) % 3
-            writer.writerow([
-                record.id,
-                frame,
-                chain_type,
-                cdr3_stop,
-                extra_bps])
-
-def _best_motif_match(jgene, motifs):
-    matches = [_align_motif(jgene, motif) + [motif] for motif in motifs]
-    dists = [m[1] for m in matches]
-    idx = dists.index(min(dists))
-    return matches[idx]
-
-def _align_motif(jgene, motif):
-    matches = []
-    for idx in range(len(jgene) - len(motif) + 1):
-        fragment = jgene[idx:(idx+len(motif))]
-        dist = sum([f != m for f, m in zip(fragment, motif)])
-        matches.append([idx, dist])
-    scores = [m[1] for m in matches]
-    idx = scores.index(min(scores))
-    return matches[idx]
-
-def setup_db_and_igblast(vdj_files_grouped, species_igblast, query_path,
+def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         db_path=None, threads=1, extra_args=None, **runargs):
+    """Run igblastn with automatic database setup"""
     with TemporaryDirectory() as tmp:
         if db_path:
             db_dir = Path(db_path)
             db_dir.mkdir(parents=True, exist_ok=True)
         else:
             db_dir = Path(tmp)
-        LOGGER.info("inferred DB directory: %s", db_dir)
-        for segment, attrs_list in vdj_files_grouped.items():
-            fasta = db_dir/f"{segment}.fasta"
-            vdj.combine_vdj(attrs_list, fasta)
-            if segment == "J":
-                make_aux_file(fasta, db_dir/f"{species_igblast}_gl.aux")
+            LOGGER.info("inferred DB directory: %s", db_dir)
+
+        attrs_list = vdj.combine_vdj(vdj_ref_paths, db_dir)
+        for segment, attrs in vdj.group(attrs_list).items():
+            LOGGER.info("detected %s references: %d", segment, len(attrs))
+            if len(attrs) == 0:
+                raise util.IgSeqError("No references for segment %s" % segment)
+        aux.make_aux_file(db_dir/"J.fasta", db_dir/f"{organism}_gl.aux")
         makeblastdbs(db_dir)
         args = [
             "-germline_db_V", f"{db_dir}/V",
             "-germline_db_D", f"{db_dir}/D",
             "-germline_db_J", f"{db_dir}/J",
             "-query", query_path,
-            "-auxiliary_data", f"{db_dir}/{species_igblast}_gl.aux",
-            "-organism", species_igblast,
+            "-auxiliary_data", f"{db_dir}/{organism}_gl.aux",
+            "-organism", organism,
             "-ig_seqtype", "Ig",
             "-num_threads", threads]
         if extra_args:
+            # make sure none of the extra arguments, if there are any, clash
+            # with the ones we've defined above.
             args_dashes = {arg for arg in args if str(arg).startswith("-")}
             extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
             shared = args_dashes & extra_dashes

@@ -28,7 +28,7 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
     attrs_list = vdj.parse_vdj_paths(ref_paths)
-    species_igblast = igblast.detect_species(attrs_list, species)
+    organism = igblast.detect_organism(attrs_list, species)
     vdj_files_grouped = vdj.group(
         attrs_list,
         lambda x: f"{x['species']}/{x['ref']}" if x["type"] == "internal" else x["input"])
@@ -36,8 +36,8 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))
         LOGGER.info("detected D FASTA from %s: %d", key, len(trio["D"]))
         LOGGER.info("detected J FASTA from %s: %d", key, len(trio["J"]))
-        for segment, attrs in trio.items():
-            if not attrs:
+        for segment, attrs_group in trio.items():
+            if not attrs_group:
                 LOGGER.critical("No FASTA for %s from %s", segment, key)
                 raise util.IgSeqError("Missing VDJ input for database")
 
@@ -45,7 +45,7 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         results = []
         for key, trio in vdj_files_grouped.items():
             proc = igblast.setup_db_and_igblast(
-                trio, species_igblast, query, threads=threads, extra_args=["-outfmt", "19"],
+                trio, organism, query, threads=threads, extra_args=["-outfmt", "19"],
                 stdout=subprocess.PIPE, text=True)
             reader = DictReader(StringIO(proc.stdout), delimiter="\t")
             for row in reader:

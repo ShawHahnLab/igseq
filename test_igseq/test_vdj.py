@@ -102,7 +102,7 @@ class TestCombineVDJ(TestBase):
         attrs_list = [{
             "path": input_v, "segment": "V", "fasta": True, "type": "file"}]
         fasta = self.tmp/"output/V.fasta"
-        vdj.combine_vdj(attrs_list, fasta)
+        vdj.combine_vdj_by_attrs(attrs_list, fasta)
         self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
 
 
@@ -128,7 +128,7 @@ class TestCombineVDJWithInternal(TestBase):
             'segment': "V",
             'species': 'rhesus'})
         fasta = self.tmp/"output/V.fasta"
-        vdj.combine_vdj(attrs_list, fasta)
+        vdj.combine_vdj_by_attrs(attrs_list, fasta)
         self.assertEqual(
             fasta.read_text(),
             (self.path/"output/V.fasta").read_text().replace("INPUTV", str(input_v)))
