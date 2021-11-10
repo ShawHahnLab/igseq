@@ -4,6 +4,10 @@ Run IgBLAST, automatically building databases and the auxiliary data file.
 This will gather up whatever combination of reference sequences are given,
 build one set of V/D/J database files and one J gene auxiliary data file, and
 run igblastn with a query FASTA.
+
+Any command-line arguments not recognized here are passed as-is to the igblastn
+command, so you can configure things like the output format and file path.  See
+igblastn -help for those options.
 """
 
 import re

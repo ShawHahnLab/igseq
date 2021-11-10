@@ -271,7 +271,7 @@ def __setup_arg_parser():
 
     __add_common_args(p_phix)
     p_phix.add_argument("-o", "--outfile", default="",
-        help="Output filename")
+        help="Output .bam filename for mapped reads")
     p_phix.add_argument("-c", "--countsfile", default="",
         help="file to write read counts to")
     p_phix.add_argument("--no-counts", action="store_true",
