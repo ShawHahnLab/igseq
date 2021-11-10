@@ -29,6 +29,8 @@ def show_file(path, force=False):
     path = Path(path)
     if path.suffix in [".csv"]:
         show_csv(path)
+    elif path.suffix in [".tsv"]:
+        show_csv(path, sep="\t")
     elif path.suffix in [".txt"]:
         show_text(path)
     elif path.suffix in [".yml", ".yaml"]:
@@ -43,9 +45,9 @@ def show_file(path, force=False):
                 f"{path} might not display well.  "
                 "Use --force if you're sure.\n")
 
-def show_csv(path):
+def show_csv(path, **kwargs):
     with open(path, encoding="UTF8") as f_in:
-        reader = DictReader(f_in)
+        reader = DictReader(f_in, **kwargs)
         show_grid(list(reader))
 
 def show_grid(grid):
