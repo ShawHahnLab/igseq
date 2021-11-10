@@ -30,7 +30,7 @@ def show_file(path, force=False):
     if path.suffix in [".csv"]:
         show_csv(path)
     elif path.suffix in [".tsv"]:
-        show_csv(path, sep="\t")
+        show_csv(path, delimiter="\t")
     elif path.suffix in [".txt"]:
         show_text(path)
     elif path.suffix in [".yml", ".yaml"]:
