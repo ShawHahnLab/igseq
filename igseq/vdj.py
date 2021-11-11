@@ -44,7 +44,7 @@ def parse_vdj_paths(ref_paths):
                 raise ValueError("couldn't determine segment for file: %s" % path)
             attrs_list.append(attrs)
         # second priority: actual directory name
-        if path.is_dir():
+        elif path.is_dir():
             for path2 in sorted(path.glob("*")):
                 attrs = parse_vdj_filename(path2)
                 attrs["input"] = str(entry)
