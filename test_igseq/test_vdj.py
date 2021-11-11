@@ -28,6 +28,20 @@ class TestParseVDJPaths(TestBase):
             attrs_list = vdj.parse_vdj_paths(ref_paths)
             self.assertEqual(attrs_list, attrs_list_exp)
 
+    def test_parse_vdj_paths_with_files(self):
+        # Individual files should work too.  In this case they're sorted as
+        # they're given, since the sorting is by-ref and then by-file.
+        mkdict = lambda s: {
+            "path": self.path/f"input/{s}.fasta",
+            "input": str(self.path/f"input/{s}.fasta"),
+            "segment": s,
+            "fasta": True,
+            "type": "file"}
+        attrs_list_exp = [mkdict(s) for s in ["V", "D", "J"]]
+        paths = [self.path/f"input/{segment}.fasta" for segment in ["V", "D", "J"]]
+        attrs_list = vdj.parse_vdj_paths(paths)
+        self.assertEqual(attrs_list, attrs_list_exp)
+
     def test_parse_vdj_paths_with_ref(self):
         # If we also ask for a fragment of the filenames of builtin FASTA
         # files, it should find those too
