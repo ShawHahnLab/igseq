@@ -29,7 +29,7 @@ def show_file(path, force=False):
     path = Path(path)
     if path.suffix in [".csv"]:
         show_csv(path)
-    elif path.suffix in [".tsv"]:
+    elif path.suffix in [".tsv", ".tab"]:
         show_csv(path, delimiter="\t")
     elif path.suffix in [".txt"]:
         show_text(path)
