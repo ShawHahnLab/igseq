@@ -1,0 +1,59 @@
+# https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html
+{% set version = "0.0.1" %}
+
+package:
+  name: igseq
+  version: {{ version }}
+
+about:
+  home: https://github.com/shawhahnlab/igseq
+  summary: Various utilities for Ig-Seq analyses
+
+source:
+  git_url: https://github.com/shawhahnlab/igseq.git
+  git_rev: master
+  git_depth: 1
+
+build:
+  number: 1
+  script: {{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+
+requirements:
+  # "Tools required to build the package. These packages are run on the build
+  # system and include things such as revision control systems (Git, SVN) make
+  # tools (GNU make, Autotool, CMake) and compilers (real cross, pseudo-cross,
+  # or native when not cross-compiling), and any source pre-processors."
+  build:
+    - python
+  # "This section was added in conda-build 3.0. It represents packages that
+  # need to be specific to the target platform when the target platform is not
+  # necessarily the same as the native build platform. For example, in order
+  # for a recipe to be "cross-capable", shared libraries requirements must be
+  # listed in the host section, rather than the build section, so that the
+  # shared libraries that get linked are ones for the target platform, rather
+  # than the native build platform. You should also include the base
+  # interpreter for packages that need one. In other words, a Python package
+  # would list python here and an R package would list mro-base or r-base."
+  host:
+    - python
+    - pip
+  # "Packages required to run the package. These are the dependencies that are
+  # installed automatically whenever the package is installed. Package names
+  # should follow the package match specifications."
+  run:
+    - python>=3.9.7
+    - biopython>=1.79
+    - bwa>=0.7.17
+    - samtools>=1.13
+    - cutadapt>=3.5
+    - pear>=0.9.6
+    - igblast>=1.17.1
+
+test:
+  source_files:
+    - test_igseq
+  imports:
+    - igseq
+  commands:
+    - igseq -h
+    - python -m unittest
