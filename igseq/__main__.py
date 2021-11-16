@@ -253,7 +253,7 @@ def __setup_arg_parser():
     p_get.set_defaults(func=_main_getreads)
 
     __add_common_args(p_demux)
-    p_demux.add_argument("-s", "--samples", default="metadata/samples.csv",
+    p_demux.add_argument("-s", "--samples", required=True,
         help="CSV of sample attributes")
     p_demux.add_argument("-r", "--run",
         help="Run ID (default: parsed from input paths)")
@@ -283,7 +283,7 @@ def __setup_arg_parser():
     p_phix.set_defaults(func=_main_phix)
 
     __add_common_args(p_trim)
-    p_trim.add_argument("-s", "--samples", default="metadata/samples.csv",
+    p_trim.add_argument("-s", "--samples", required=True,
         help="CSV of sample attributes")
     p_trim.add_argument("-o", "--outdir", default="",
         help="Output directory")
@@ -291,7 +291,7 @@ def __setup_arg_parser():
         help="file to write read counts to")
     p_trim.add_argument("--no-counts", action="store_true",
         help="don't write a counts file")
-    p_trim.add_argument("-S", "--species", default="rhesus",
+    p_trim.add_argument("-S", "--species", required=True,
         help="species to use for selecting appropriate primer sequences (human or rhesus)")
     p_trim.add_argument("--sample-name",
         help="use this sample name rather than inferring from filenames")
