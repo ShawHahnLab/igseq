@@ -7,7 +7,7 @@ import sys
 import logging
 from pathlib import Path
 import subprocess
-from subprocess import Popen, PIPE, DEVNULL
+from subprocess import Popen, PIPE
 from . import util
 
 LOGGER = logging.getLogger(__name__)
@@ -79,7 +79,21 @@ def pear(r1_in, r2_in, outfile, threads, log_path=None, quiet=True):
     the assembled reads as the specified outfile and removing the others.
     pear's status text is returned and optionally written to a log file (if
     log_path is not None) and/or stdout here (if quiet is False).
+
+    If either input file is empty an empty output file is created and pear is
+    skipped (since it crashes with empty inputs, among other things).
     """
+    skip = False
+    for fqgz in [r1_in, r2_in]:
+        if util.is_empty_gzip(fqgz):
+            LOGGER.warning("%s empty, skipping pear and making empty output", fqgz)
+            skip = True
+    if skip:
+        util.make_empty_gzip(outfile)
+        if log_path:
+            with open(log_path, "wt") as log:
+                log.write("pear skipped due to empty input file(s)\n")
+        return None
     Path(outfile).parent.mkdir(parents=True, exist_ok=True)
     args = [PEAR, "-f", r1_in, "-r", r2_in, "-o", outfile, "-j", threads]
     args = [str(arg) for arg in args]
@@ -116,6 +130,9 @@ def pear(r1_in, r2_in, outfile, threads, log_path=None, quiet=True):
 
 def _count_pear_reads(logtxt):
     """Parse read counts from stdout from PEAR run."""
+    # assume an empty/None logtxt means pear was skipped
+    if not logtxt:
+        return {"input": 0, "output": 0, "Discarded": 0, "Not assembled": 0}
     # We're looking for something like this:
     # Assembled reads ...................: 2,874,079 / 3,179,377 (90.398%)
     # Discarded reads ...................: 0 / 3,179,377 (0.000%)
