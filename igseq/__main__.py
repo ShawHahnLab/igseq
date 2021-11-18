@@ -19,6 +19,7 @@ from . import vdj_match
 from . import tab2seq
 from .show import show_files, list_files
 from .util import IgSeqError
+from .version import __version__
 
 LOGGER = logging.getLogger()
 
@@ -192,7 +193,7 @@ def __setup_arg_parser():
     parser = argparse.ArgumentParser(
         description=rewrap(__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    #__add_common_args(parser)
+    parser.add_argument("--version", "-V", action="version", version=__version__)
     subps = parser.add_subparsers(metavar="", description="igseq "
             "features are split up into these sub-commands.  Call igseq "
             "subcommand --help to get more detailed information on each one.")
