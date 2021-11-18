@@ -133,8 +133,8 @@ def write_locs(outdir, trios):
             f_out.write(encode_loc_bytes(fields["x_pos"], fields["y_pos"]))
 
 def encode_loc_bytes(x_pos, y_pos):
-    x_bytes = struct.pack("<f", (x_pos - 1000)/10)
-    y_bytes = struct.pack("<f", (y_pos - 1000)/10)
+    x_bytes = struct.pack("<f", (int(x_pos) - 1000)/10)
+    y_bytes = struct.pack("<f", (int(y_pos) - 1000)/10)
     return x_bytes + y_bytes
 
 def fastq2bcl(fqgz_i1, fqgz_r1, fqgz_r2, outdir=None):
