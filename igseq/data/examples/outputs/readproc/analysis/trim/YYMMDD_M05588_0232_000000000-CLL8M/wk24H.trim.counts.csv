@@ -1,0 +1,7 @@
+Category,Sample,Item,NumSeqs
+trim,wk24H,input,0
+trim,wk24H,output,0
+trim,wk24H,too_short,0
+trim,wk24H,discard_untrimmed,0
+trim,wk24H,read1_with_adapter,0
+trim,wk24H,read2_with_adapter,0

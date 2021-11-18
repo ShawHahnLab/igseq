@@ -1,0 +1,5 @@
+Category,Sample,Item,NumSeqs
+merge,wk48H,input,20
+merge,wk48H,output,10
+merge,wk48H,Discarded,0
+merge,wk48H,Not assembled,10
