@@ -3,6 +3,7 @@ Various helper functions.  Not much to see here.
 """
 
 import re
+import gzip
 from pathlib import Path
 from csv import DictReader, DictWriter
 from Bio.Seq import Seq
@@ -110,7 +111,6 @@ def parse_multi_fqgz_paths(paths_input):
         raise ValueError
     return pairs
 
-
 def default_path(paths, name1, name2=""):
     parent = common_parent(paths)
     return parent.parent.parent / name1 / parent.name / name2
@@ -139,6 +139,14 @@ def common_parent(paths):
             break
         parent = level[0]
     return parent
+
+def is_empty_gzip(path):
+    with gzip.open(path, "rb") as f_in:
+        return len(f_in.read(1)) == 0
+
+def make_empty_gzip(path):
+    with gzip.open(path, "wb"):
+        pass
 
 def parse_quals(txt, shift=33):
     """Parse FASTQ-encoded Phred scores from ASCII text."""
