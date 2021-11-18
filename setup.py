@@ -1,12 +1,13 @@
 import setuptools
 from pathlib import Path
+import igseq
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="igseq",
-    version="0.0.1",
+    version=igseq.__version__,
     description="IgSeq commands",
     long_description=long_description,
     long_description_content_type="text/markdown",
