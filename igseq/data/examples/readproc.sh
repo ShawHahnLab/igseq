@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-EXAMPLES=$(python -c 'import igseq.util; print(igseq.util.DATA)')/examples
-
 # A whole start-to-finish example for one run.
 #
 # Each step generally creates a set of output files in one directory with one
 # or more counts.csv files summarizing read counts.  For each command the
 # output directory is left implicit, but given as the input for the next
 # command.
+
+EXAMPLES=$(python -c 'import igseq.util; print(igseq.util.DATA)')/examples
 
 # Extract an example Illumina run directory with just a handful of reads
 tar xzf $EXAMPLES/runs/YYMMDD_M05588_0232_000000000-CLL8M.tgz
@@ -34,12 +34,10 @@ igseq phix analysis/demux/YYMMDD_M05588_0232_000000000-CLL8M
 igseq trim -s $EXAMPLES/samples.csv -S rhesus analysis/demux/YYMMDD_M05588_0232_000000000-CLL8M
 
 # Merge the trimmed R1+R2 pairs for each sample
+# I've left out reads for the wk24H sample so there's a warning here about
+# skipping read merging via pear (which crashes with empty input files) and
+# instead empty outputs are created for that one.
 igseq merge analysis/trim/YYMMDD_M05588_0232_000000000-CLL8M
 
-# From here we can take the merged reads and give them to IgDiscover, SONAR,
-# or anything else.
-
-# As one example, use the IgBLAST wraper command to automatically set up IgBLAST database
-# files for all builtin rhesus gene sequences and make an AIRR-format TSV table
-# (format 19 in IgBLAST jargon)
-#igseq igblast -r rhesus -Q analysis/YYMMDD_M05588_0232_000000000-CLL8M/wk12.fastq.gz -outfmt 19 -out wk14_airr.tsv
+# From here we can take the merged reads for sample "wk48H" and give them to
+# IgDiscover, SONAR, or anything else.

@@ -79,6 +79,9 @@ The chain type is used to select the appropriate constant region primer:
       rhesus   kappa GCGGGAAGATGAAGACAGATGGTGCAGCCACAG
       rhesus  lambda GGCCTTGTTGGCTTGAAGCTCCTCAGAGGAGGG
 
+See `igseq/data/examples/readproc.sh` for an example read processing workflow
+from start to finish with a small set of reads.
+
 [bcl2fastq]: https://support.illumina.com/sequencing/sequencing_software/bcl2fastq-conversion-software.html
 [cutadapt]: https://cutadapt.readthedocs.io
 [PEAR]: https://cme.h-its.org/exelixis/web/software/pear/
