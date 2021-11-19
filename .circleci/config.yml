@@ -28,6 +28,11 @@ jobs:
             source ~/miniconda3/bin/activate igseq
             env | tee /tmp/env.txt
       - run:
+          name: Store conda env package list
+          command: |
+            source ~/miniconda3/bin/activate igseq
+            conda list --explicit | tee /tmp/packages.txt
+      - run:
           name: Test python package
           command: |
             cd igseq
@@ -47,10 +52,14 @@ jobs:
             source ~/miniconda3/bin/activate igseq
             SKIPBCL2FASTQ=yes tools/check-examples.sh
       - store_artifacts:
+          name: "Store Artifacts: shell environment"
+          path: /tmp/env.txt
+          destination: environment
+      - store_artifacts:
+          name: "Store Artifacts: conda packages"
+          path: /tmp/packages.txt
+          destination: packages
+      - store_artifacts:
           name: "Store Artifacts: igseq-testdirs"
           path: /tmp/igseq-testdirs
           destination: igseq-testdirs
-      - store_artifacts:
-          name: "Store Artifacts: environment"
-          path: /tmp/env.txt
-          destination: environment
