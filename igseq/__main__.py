@@ -27,6 +27,9 @@ def rewrap(txt):
     """Re-wrap text at 80 columns or less, preserving paragraphs."""
     # inspired roughly by what https://github.com/marcelm/cutadapt does
     width = min(80, shutil.get_terminal_size().columns)
+    # if the terminal width was supposedly 0, we'll just use 80
+    if not width:
+        width = 80
     wrap = lambda txt: "\n".join(textwrap.wrap(txt, width=width))
     chunks = txt.strip().split("\n\n")
     return "\n\n".join([wrap(chunk) for chunk in chunks])
