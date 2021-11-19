@@ -10,7 +10,7 @@ jobs:
           keys:
             - cache-{{ checksum "igseq/igseq/data/environment.yml" }}
       - run:
-          name: Install
+          name: Install Conda Environment
           command: |
             if [[ ! -e ~/miniconda3/envs/igseq ]]; then
               wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -33,6 +33,12 @@ jobs:
             cd igseq
             source ~/miniconda3/bin/activate igseq
             TEST_IGSEQ_LIVE=no python -m unittest -v
+      - run:
+          name: Install python package
+          command: |
+            cd igseq
+            python setup.py install
+            igseq -h
       - run:
           name: Test example scripts
           command: |
