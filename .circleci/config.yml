@@ -37,6 +37,7 @@ jobs:
           name: Install python package
           command: |
             cd igseq
+            source ~/miniconda3/bin/activate igseq
             python setup.py install
             igseq -h
       - run:
