@@ -6,6 +6,24 @@ A command-line tool for various common Ig-Seq tasks.  These are heavily biased
 toward the peculiarities of our protocol and for rhesus macaque antibody
 sequences.  Your mileage may vary.
 
+## Install
+
+Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+
+Install from the latest version via <https://anaconda.org/ShawHahnLab/igseq>:
+
+    conda create --name igseq -c conda-forge -c bioconda -c ShawHahnLab igseq
+
+Or, install from the latest source here:
+
+    git clone https://github.com/ShawHahnLab/igseq.git
+    cd igseq
+    conda env update --file igseq/data/environment.yml
+    conda activate igseq
+    pip install .
+
+## Some Instructions
+
 The `igseq` command is organized into subcommands, grouped into two
 categories: early read processing tasks (demultiplex, trim, merge, etc.), and
 various convenience tools (IgBLAST this against that, what database has the

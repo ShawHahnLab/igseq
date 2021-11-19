@@ -3,6 +3,7 @@
 version=$(python -c 'from igseq.version import __version__; print(__version__)')
 date=$(date +%Y-%m-%d)
 echo Version: $version
+echo
 sed -i 's/{% set version = ".*" %}/{% set version = "'$version'" %}'/ conda/meta.yaml
 sed -i "s/# dev$/# $version - $date/" CHANGELOG.md
 echo conda/meta.yaml vs igseq/data/environment.yml:
