@@ -25,7 +25,7 @@ jobs:
       - run:
           name: Store conda env shell environment
           command: |
-            source ~/miniconda/bin/activate igseq
+            source ~/miniconda3/bin/activate igseq
             env | tee /tmp/env.txt
       - run:
           name: Test python package
