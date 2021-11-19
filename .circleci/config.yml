@@ -47,8 +47,10 @@ jobs:
             source ~/miniconda3/bin/activate igseq
             SKIPBCL2FASTQ=yes tools/check-examples.sh
       - store_artifacts:
+          name: Store Artifacts: igseq-testdirs
           path: /tmp/igseq-testdirs
           destination: igseq-testdirs
       - store_artifacts:
+          name: Store Artifacts: environment
           path: /tmp/env.txt
           destination: environment
