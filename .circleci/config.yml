@@ -43,7 +43,7 @@ jobs:
           command: |
             cd igseq
             source ~/miniconda3/bin/activate igseq
-            python setup.py install
+            pip install .
             igseq -h
       - run:
           name: Test example scripts
