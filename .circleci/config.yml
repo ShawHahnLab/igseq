@@ -28,6 +28,12 @@ jobs:
             cd igseq
             source ~/miniconda3/bin/activate igseq
             TEST_IGSEQ_LIVE=no python -m unittest -v
+      - run:
+          name: Test example scripts
+          command: |
+            cd igseq
+            source ~/miniconda3/bin/activate igseq
+            tools/check-examples.sh
       - store_artifacts:
           path: /tmp/igseq-testdirs
           destination: igseq-testdirs
