@@ -5,10 +5,10 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python>=3.9.7
-  - biopython>=1.79
-  - bwa>=0.7.17
-  - samtools>=1.13
-  - cutadapt>=3.5
-  - pear>=0.9.6
-  - igblast>=1.17.1
+  - python>=3.9.7,<4
+  - biopython>=1.79,<2
+  - bwa>=0.7.17,<0.8
+  - samtools>=1.13,<2
+  - cutadapt>=3.5,<4
+  - pear>=0.9.6,<1
+  - igblast>=1.17.1,<2
