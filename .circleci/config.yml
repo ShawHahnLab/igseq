@@ -23,6 +23,11 @@ jobs:
           paths: [ ~/miniconda3 ]
           key: cache-{{ checksum "igseq/igseq/data/environment.yml" }}
       - run:
+          name: Store conda env shell environment
+          command: |
+            source ~/miniconda/bin/activate igseq
+            env | tee /tmp/env.txt
+      - run:
           name: Test python package
           command: |
             cd igseq
@@ -33,7 +38,10 @@ jobs:
           command: |
             cd igseq
             source ~/miniconda3/bin/activate igseq
-            tools/check-examples.sh
+            SKIPBCL2FASTQ=yes tools/check-examples.sh
       - store_artifacts:
           path: /tmp/igseq-testdirs
           destination: igseq-testdirs
+      - store_artifacts:
+          path: /tmp/env.txt
+          destination: environment
