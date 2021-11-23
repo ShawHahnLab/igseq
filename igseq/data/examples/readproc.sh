@@ -7,7 +7,7 @@
 # output directory is left implicit, but given as the input for the next
 # command.
 
-EXAMPLES=$(python -c 'import igseq.util; print(igseq.util.DATA)')/examples
+[ -v EXAMPLES ] || EXAMPLES=$(python -c 'import igseq.util; print(igseq.util.DATA)')/examples
 
 # Extract an example Illumina run directory with just a handful of reads
 tar xzf $EXAMPLES/runs/YYMMDD_M05588_0232_000000000-CLL8M.tgz
