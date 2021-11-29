@@ -23,3 +23,8 @@ cut -f 10,62 igblast.tsv
 # Here we have two equivalent possible V genes, one from IMGT and one from
 # Bernat et al.  2021 (https://doi.org/10.1016/j.immuni.2020.12.018)
 igseq igblast -r rhesus -Q $QUERY -outfmt 19 | cut -f 10,62
+
+# The AIRR format is one row per query sequence, but there's also IgBLAST's own
+# tabular output format that can give more information on separate lines, like
+# additional gene assignments.
+igseq igblast -r rhesus -Q $QUERY -outfmt 7 -num_alignments_V 5
