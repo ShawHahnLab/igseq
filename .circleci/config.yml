@@ -37,7 +37,7 @@ jobs:
           command: |
             cd igseq
             source ~/miniconda3/bin/activate igseq
-            TEST_IGSEQ_LIVE=no python -m unittest -v
+            TEST_IGSEQ_LIVE=yes python -m unittest -v
       - run:
           name: Install python package
           command: |

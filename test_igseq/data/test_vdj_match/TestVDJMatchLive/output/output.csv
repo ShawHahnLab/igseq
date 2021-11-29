@@ -1,0 +1,4 @@
+query,reference,segment,call,length,identity
+query,rhesus/imgt,V,IGHV4-173*01,296,99.324
+query,rhesus/imgt,D,"IGHD4-23*01,IGHD4-41*01",9,100.000
+query,rhesus/imgt,J,IGHJ4*01,45,100.000
