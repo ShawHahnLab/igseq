@@ -14,6 +14,7 @@ dashes if needed to force igseq to handle it correctly (for example,
 """
 
 import re
+import sys
 import logging
 from pathlib import Path
 import subprocess
@@ -64,23 +65,26 @@ def igblast(
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
         LOGGER.info("detected ref type: %s", attrs["type"])
-    organism = detect_organism(attrs_list, species)
+    species_det = {attrs.get("species") for attrs in attrs_list}
+    species_det = {s for s in species_det if s}
+    organism = detect_organism(species_det, species)
     if not dry_run:
-        setup_db_dir_and_igblast(
+        proc = setup_db_dir_and_igblast(
             [attrs["path"] for attrs in attrs_list],
-            organism, query_path, db_path, threads, extra_args)
+            organism, query_path, db_path, threads, extra_args,
+            capture_output=True, text=True, check=True)
+        sys.stdout.write(proc.stdout)
+        sys.stderr.write(proc.stderr)
 
-def detect_organism(attrs_list, species=None):
+def detect_organism(species_det, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
 
-    attrs_list: output from vdj.parse_vdj_paths
+    species_det: set of possible species names to use
     species: optional overriding species name
 
     This includes some fuzzy matching so things like "rhesus_monkey", "RHESUS",
     "rhesus" will all map to "rhesus_monkey" for IgBLAST.
     """
-    species_det = {attrs.get("species") for attrs in attrs_list}
-    species_det = {s for s in species_det if s}
     if not species and not species_det:
         raise util.IgSeqError(
             "species not detected from input.  specify a species manually.")
@@ -101,7 +105,7 @@ def detect_organism(attrs_list, species=None):
         organism = SPECIESMAP[species]
     except KeyError as err:
         keys = str(SPECIESMAP.keys())
-        raise util.IgSeqError("species not recognized.  should be one of: %s" % keys) from err
+        raise util.IgSeqError(f"species not recognized.  should be one of: {keys}") from err
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
 
@@ -120,7 +124,7 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         for segment, attrs in vdj.group(attrs_list).items():
             LOGGER.info("detected %s references: %d", segment, len(attrs))
             if len(attrs) == 0:
-                raise util.IgSeqError("No references for segment %s" % segment)
+                raise util.IgSeqError(f"No references for segment {segment}")
         aux.make_aux_file(db_dir/"J.fasta", db_dir/f"{organism}_gl.aux")
         makeblastdbs(db_dir)
         args = [
@@ -146,6 +150,7 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         return _run_igblastn(args, **runargs)
 
 def makeblastdbs(dir_path):
+    """Run makeblastdb for existing V.fasta, D.fasta, J.fasta in a directory."""
     for segment in ["V", "D", "J"]:
         _run_makeblastdb(f"{dir_path}/{segment}.fasta")
 
@@ -167,4 +172,5 @@ def _run_igblastn(args, **runargs):
     """
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
-    return subprocess.run(args, check=True, **runargs)
+    LOGGER.info("igblastn subprocess.run args: %s", runargs)
+    return subprocess.run(args, **runargs) # pylint: disable=subprocess-run-check

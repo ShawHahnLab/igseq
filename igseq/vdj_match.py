@@ -28,7 +28,11 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         showtxt = not output
         LOGGER.info("detected showtxt: %s", showtxt)
     attrs_list = vdj.parse_vdj_paths(ref_paths)
-    organism = igblast.detect_organism(attrs_list, species)
+
+    species_det = {attrs.get("species") for attrs in attrs_list}
+    species_det = {s for s in species_det if s}
+    organism = igblast.detect_organism(species_det, species)
+
     vdj_files_grouped = vdj.group(
         attrs_list,
         lambda x: f"{x['species']}/{x['ref']}" if x["type"] == "internal" else x["input"])
@@ -47,7 +51,7 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
             paths = [attrs["path"] for attrs in trio["V"] + trio["D"] + trio["J"]]
             proc = igblast.setup_db_dir_and_igblast(
                 paths, organism, query, threads=threads, extra_args=["-outfmt", "19"],
-                stdout=subprocess.PIPE, text=True)
+                stdout=subprocess.PIPE, text=True, check=True)
             reader = DictReader(StringIO(proc.stdout), delimiter="\t")
             for row in reader:
                 for segment in ["v", "d", "j"]:
