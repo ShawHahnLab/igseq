@@ -27,4 +27,6 @@ igseq igblast -r rhesus -Q $QUERY -outfmt 19 | cut -f 10,62
 # The AIRR format is one row per query sequence, but there's also IgBLAST's own
 # tabular output format that can give more information on separate lines, like
 # additional gene assignments.
-igseq igblast -r rhesus -Q $QUERY -outfmt 7 -num_alignments_V 5
+# The -num_alignments_V argument clashes with iseq's -n, so we need to use --
+# to clarify.  igseq will remove the extra - when calling igblastn.
+igseq igblast -r rhesus -Q $QUERY -outfmt 7 --num_alignments_V 5
