@@ -7,7 +7,10 @@ run igblastn with a query FASTA.
 
 Any command-line arguments not recognized here are passed as-is to the igblastn
 command, so you can configure things like the output format and file path.  See
-igblastn -help for those options.
+igblastn -help for those options.  Any igblastn argument can be given with two
+dashes if needed to force igseq to handle it correctly (for example,
+-num_alignments_V will be interprted as -n um_alignments_V, but
+--num_alignments_V will work).
 """
 
 import re
@@ -130,6 +133,8 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
             "-ig_seqtype", "Ig",
             "-num_threads", threads]
         if extra_args:
+            # remove any extra - at the start
+            extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
             # make sure none of the extra arguments, if there are any, clash
             # with the ones we've defined above.
             args_dashes = {arg for arg in args if str(arg).startswith("-")}
