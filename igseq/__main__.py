@@ -17,7 +17,7 @@ from . import summarize
 from . import vdj_gather
 from . import vdj_match
 from . import tab2seq
-from .show import show_files, list_files
+from . import show
 from .util import IgSeqError
 from .version import __version__
 
@@ -30,7 +30,11 @@ def rewrap(txt):
     # if the terminal width was supposedly 0, we'll just use 80
     if not width:
         width = 80
-    wrap = lambda txt: "\n".join(textwrap.wrap(txt, width=width))
+    def wrap(txt):
+        if txt.startswith("    "):
+            return txt
+        return "\n".join(textwrap.wrap(txt, width=width))
+    #wrap = lambda txt: "\n".join(textwrap.wrap(txt, width=width))
     chunks = txt.strip().split("\n\n")
     return "\n\n".join([wrap(chunk) for chunk in chunks])
 
@@ -128,10 +132,10 @@ def _main_merge(args):
         threads=args.threads)
 
 def _main_show(args):
-    show_files(text_items=args.text, force=args.force)
+    show.show_files(text_items=args.text, force=args.force)
 
 def _main_list(args):
-    list_files(text_items=args.text)
+    show.list_files(text_items=args.text)
 
 def _main_igblast(args, extra_igblastn_args=None):
     igblast.igblast(
@@ -240,8 +244,14 @@ def __setup_arg_parser():
         help="Convert CSV/TSV to FASTA/FASTQ",
         description=rewrap(tab2seq.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    p_show = subps.add_parser("show", help="show builtin reference data")
-    p_list = subps.add_parser("list", help="list builtin reference data files")
+    p_show = subps.add_parser("show",
+        help="show builtin reference data",
+        description=rewrap(show.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_list = subps.add_parser("list",
+        help="list builtin reference data files",
+        description=rewrap(show.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 
     __add_common_args(p_get)
     p_get.add_argument("input", help="one Illumina run directory")
