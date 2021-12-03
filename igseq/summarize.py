@@ -36,17 +36,14 @@ def summarize(ref_paths, query, output=None, showtxt=None, species=None, dry_run
 
     if not dry_run:
         results = []
-        proc = igblast.setup_db_dir_and_igblast(
+        proc, attrs_list_seq = igblast.setup_db_dir_and_igblast(
             [attrs["path"] for attrs in attrs_list], organism, query, threads=threads,
             extra_args=["-outfmt", "19"],
             capture_output=True, text=True, check=True)
         reader = DictReader(StringIO(proc.stdout), delimiter="\t")
         lengthmap = {}
-        for attrs_group in attrs_list_grouped.values():
-            for attrs in attrs_group:
-                with open(attrs["path"]) as f_in:
-                    for record in SeqIO.parse(f_in, "fasta"):
-                        lengthmap[record.id] = len(record)
+        for attrs in attrs_list_seq:
+            lengthmap[attrs["seqid_here"]] = len(attrs["seq"])
         for row in reader:
             cdrlens = []
             for cdr in ["cdr1_aa", "cdr2_aa", "cdr3_aa"]:

@@ -69,7 +69,7 @@ def igblast(
     species_det = {s for s in species_det if s}
     organism = detect_organism(species_det, species)
     if not dry_run:
-        proc = setup_db_dir_and_igblast(
+        proc, _ = setup_db_dir_and_igblast(
             [attrs["path"] for attrs in attrs_list],
             organism, query_path, db_path, threads, extra_args,
             capture_output=True, text=True, check=True)
@@ -147,7 +147,8 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
             if shared:
                 raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
             args += extra_args
-        return _run_igblastn(args, **runargs)
+        proc = _run_igblastn(args, **runargs)
+        return proc, attrs_list
 
 def makeblastdbs(dir_path):
     """Run makeblastdb for existing V.fasta, D.fasta, J.fasta in a directory."""
