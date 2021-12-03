@@ -28,3 +28,12 @@ class TestSummarizeLive(TestBase, TestLive):
             self.assertEqual(stdout, "")
             self.assertEqual(stderr, "")
             self.assertTxtsMatch(output_csv, self.path/"output/output.csv")
+
+    def test_summarize_multi(self):
+        # more than one germline reference included
+        stdout, stderr = self.redirect_streams(
+            lambda: summarize.summarize(["rhesus"], self.path/"input/query.fasta"))
+        self.assertEqual(stderr, "")
+        with open(self.path/"output/stdout_ref_rhesus.txt") as f_in:
+            stdout_exp = f_in.read()
+        self.assertEqual(stdout_exp, stdout)
