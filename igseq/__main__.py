@@ -245,7 +245,7 @@ def __setup_arg_parser():
         description=rewrap(tab2seq.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
-        help="show builtin reference data",
+        help="show file contents",
         description=rewrap(show.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_list = subps.add_parser("list",
