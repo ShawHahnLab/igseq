@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 - 2021-12-06
+## 0.1.1 - 2021-12-07
 
 ### Changed
 
@@ -8,6 +8,7 @@
 
 ### Fixed
 
+ * IgBLAST output is now shown even if it crashes ([#12])
  * Header-only CSV/TSV files no longer crash the show command ([#8])
  * summarize command now works with multiple references ([#7])
  * vdj-match and summarize commands now work as intended via igblast, and all
@@ -17,6 +18,7 @@
  * Duplicate FASTA paths found in vdj-gather will no longer result in
    duplicated output sequences ([#2])
 
+[#12]: https://github.com/ShawHahnLab/igseq/pull/12
 [#8]: https://github.com/ShawHahnLab/igseq/pull/8
 [#7]: https://github.com/ShawHahnLab/igseq/pull/7
 [#5]: https://github.com/ShawHahnLab/igseq/pull/5
