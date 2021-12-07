@@ -69,10 +69,15 @@ def igblast(
     species_det = {s for s in species_det if s}
     organism = detect_organism(species_det, species)
     if not dry_run:
-        proc, _ = setup_db_dir_and_igblast(
-            [attrs["path"] for attrs in attrs_list],
-            organism, query_path, db_path, threads, extra_args,
-            capture_output=True, text=True, check=True)
+        try:
+            proc, _ = setup_db_dir_and_igblast(
+                [attrs["path"] for attrs in attrs_list],
+                organism, query_path, db_path, threads, extra_args,
+                capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as err:
+            sys.stdout.write(err.stdout)
+            sys.stderr.write(err.stderr)
+            raise util.IgSeqError("IgBLAST crashed") from err
         sys.stdout.write(proc.stdout)
         sys.stderr.write(proc.stderr)
 
