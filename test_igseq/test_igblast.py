@@ -62,3 +62,21 @@ class TestIgblastLive(TestBase, TestLive):
                 btwn(stdout, 2, 97),
                 btwn(stdout_exp, 2, 97))
         self.assertEqual(stderr, "")
+
+
+class TestIgblastLiveCrash(TestBase, TestLive):
+    """Test that an igblastn crash is handled"""
+
+    def test_igblast(self):
+        """Test that an igblastn crash is caught and re-raised as an IgSeqError.
+
+        Standard error and output from the igblastn process should still show
+        up on stderr and stdout as usual.
+        """
+        def catch_expected_error():
+            with self.assertRaises(IgSeqError):
+                igblast.igblast(
+                    ["rhesus/imgt"], self.path/"input/query.fasta", extra_args=["-bad-arg"])
+        stdout, stderr = self.redirect_streams(catch_expected_error)
+        self.assertEqual(stdout, "")
+        self.assertIn('Error: Unknown argument: "bad-arg"', stderr)
