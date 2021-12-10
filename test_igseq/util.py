@@ -3,6 +3,8 @@
 import unittest
 import shutil
 import random
+from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import os
@@ -70,6 +72,7 @@ def simulate(i1_path, r1_path, r2_path, num=50000, random_fraction=0.5):
             writerec(seq_r1, f"read{idx}", f"BarcodeFwd={bcfwd} BarcodeRev={bcrev}", qual_r1, f_r1)
             writerec(seq_r2, f"read{idx}", f"BarcodeFwd={bcfwd} BarcodeRev={bcrev}", qual_r2, f_r2)
 
+
 class TestBase(unittest.TestCase):
     def setUp(self):
         if isinstance(self, TestLive) and not LIVE:
@@ -88,7 +91,6 @@ class TestBase(unittest.TestCase):
             shutil.copytree(self.tmp, Path("/tmp/igseq-testdirs")/str(self.tmp).lstrip("/"))
         self.__tmp.cleanup()
         os.chdir(self.__startdir)
-
 
     def __setup_path(self):
         """Path for supporting files for each class."""
@@ -112,6 +114,20 @@ class TestBase(unittest.TestCase):
             if contents1 != contents2:
                 raise AssertionError(f"mismatch between {path1} and {path2}")
 
+    def redirect_streams(self, func):
+        """Capture and return stdout and stderr as strings when calling func."""
+        stdout = StringIO()
+        stderr = StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            func()
+        stdout = stdout.getvalue()
+        stderr = stderr.getvalue()
+        return stdout, stderr
+
 
 class TestLive:
-    pass
+    """Parent class for tests that call external commands like igblastn.
+
+    This lets us handle those tests differently if needed, like skipping tests
+    that use external commands but running all others.
+    """

@@ -9,7 +9,7 @@ from csv import DictReader, DictWriter
 from Bio.Seq import Seq
 
 DATA = Path(__file__).parent / "data"
-FILES = [path for path in DATA.glob("**/*") if path.is_file()]
+FILES = sorted(path for path in DATA.glob("**/*") if path.is_file())
 READS = ["I1", "R1", "R2"]
 
 def __load_primers(path):

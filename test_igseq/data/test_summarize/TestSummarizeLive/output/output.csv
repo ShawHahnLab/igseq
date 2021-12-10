@@ -1,0 +1,2 @@
+query,cdr_lens,v_call,v_ident_pct,v_ident_nt,d_call,d_ident_pct,d_ident_nt,j_call,j_ident_pct,j_ident_nt
+query,8.8.14,IGHV4-173*01,99.324%,294/296 of 296,"IGHD4-23*01,IGHD4-41*01",100.000%,9/9 of 16,IGHJ4*01,100.000%,45/45 of 48

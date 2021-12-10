@@ -7,10 +7,14 @@ run igblastn with a query FASTA.
 
 Any command-line arguments not recognized here are passed as-is to the igblastn
 command, so you can configure things like the output format and file path.  See
-igblastn -help for those options.
+igblastn -help for those options.  Any igblastn argument can be given with two
+dashes if needed to force igseq to handle it correctly (for example,
+-num_alignments_V will be interprted as -n um_alignments_V, but
+--num_alignments_V will work).
 """
 
 import re
+import sys
 import logging
 from pathlib import Path
 import subprocess
@@ -61,23 +65,31 @@ def igblast(
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
         LOGGER.info("detected ref type: %s", attrs["type"])
-    organism = detect_organism(attrs_list, species)
+    species_det = {attrs.get("species") for attrs in attrs_list}
+    species_det = {s for s in species_det if s}
+    organism = detect_organism(species_det, species)
     if not dry_run:
-        setup_db_dir_and_igblast(
-            [attrs["path"] for attrs in attrs_list],
-            organism, query_path, db_path, threads, extra_args)
+        try:
+            proc, _ = setup_db_dir_and_igblast(
+                [attrs["path"] for attrs in attrs_list],
+                organism, query_path, db_path, threads, extra_args,
+                capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as err:
+            sys.stdout.write(err.stdout)
+            sys.stderr.write(err.stderr)
+            raise util.IgSeqError("IgBLAST crashed") from err
+        sys.stdout.write(proc.stdout)
+        sys.stderr.write(proc.stderr)
 
-def detect_organism(attrs_list, species=None):
+def detect_organism(species_det, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
 
-    attrs_list: output from vdj.parse_vdj_paths
+    species_det: set of possible species names to use
     species: optional overriding species name
 
     This includes some fuzzy matching so things like "rhesus_monkey", "RHESUS",
     "rhesus" will all map to "rhesus_monkey" for IgBLAST.
     """
-    species_det = {attrs.get("species") for attrs in attrs_list}
-    species_det = {s for s in species_det if s}
     if not species and not species_det:
         raise util.IgSeqError(
             "species not detected from input.  specify a species manually.")
@@ -98,7 +110,7 @@ def detect_organism(attrs_list, species=None):
         organism = SPECIESMAP[species]
     except KeyError as err:
         keys = str(SPECIESMAP.keys())
-        raise util.IgSeqError("species not recognized.  should be one of: %s" % keys) from err
+        raise util.IgSeqError(f"species not recognized.  should be one of: {keys}") from err
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
 
@@ -117,7 +129,7 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         for segment, attrs in vdj.group(attrs_list).items():
             LOGGER.info("detected %s references: %d", segment, len(attrs))
             if len(attrs) == 0:
-                raise util.IgSeqError("No references for segment %s" % segment)
+                raise util.IgSeqError(f"No references for segment {segment}")
         aux.make_aux_file(db_dir/"J.fasta", db_dir/f"{organism}_gl.aux")
         makeblastdbs(db_dir)
         args = [
@@ -130,6 +142,8 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
             "-ig_seqtype", "Ig",
             "-num_threads", threads]
         if extra_args:
+            # remove any extra - at the start
+            extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
             # make sure none of the extra arguments, if there are any, clash
             # with the ones we've defined above.
             args_dashes = {arg for arg in args if str(arg).startswith("-")}
@@ -138,9 +152,11 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
             if shared:
                 raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
             args += extra_args
-        return _run_igblastn(args, **runargs)
+        proc = _run_igblastn(args, **runargs)
+        return proc, attrs_list
 
 def makeblastdbs(dir_path):
+    """Run makeblastdb for existing V.fasta, D.fasta, J.fasta in a directory."""
     for segment in ["V", "D", "J"]:
         _run_makeblastdb(f"{dir_path}/{segment}.fasta")
 
@@ -162,4 +178,5 @@ def _run_igblastn(args, **runargs):
     """
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
-    return subprocess.run(args, check=True, **runargs)
+    LOGGER.info("igblastn subprocess.run args: %s", runargs)
+    return subprocess.run(args, **runargs) # pylint: disable=subprocess-run-check

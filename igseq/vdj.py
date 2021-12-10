@@ -67,6 +67,17 @@ def parse_vdj_paths(ref_paths):
                 attrs_list.append(attrs)
         else:
             raise util.IgSeqError("ref path not recognized: %s" % entry)
+    # handle duplicates produced from multiple ref_paths leading to the same
+    # files
+    groups = {}
+    for attrs in attrs_list:
+        if attrs["path"] not in groups:
+            groups[attrs["path"]] = attrs
+        else:
+            new_input = groups[attrs["path"]]["input"] + "; " + str(attrs["input"])
+            groups[attrs["path"]].update(attrs)
+            groups[attrs["path"]]["input"] = new_input
+    attrs_list = list(groups.values())
     return attrs_list
 
 def get_internal_vdj(name):

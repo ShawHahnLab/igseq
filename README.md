@@ -8,11 +8,12 @@ sequences.  Your mileage may vary.
 
 ## Install
 
-Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+First, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
-Install from the latest version via <https://anaconda.org/ShawHahnLab/igseq>:
+Then install from the latest version via <https://anaconda.org/ShawHahnLab/igseq>:
 
     conda create --name igseq -c conda-forge -c bioconda -c ShawHahnLab igseq
+    conda activate igseq
 
 Or, install from the latest source here:
 

@@ -18,5 +18,7 @@ def vdj_gather(ref_paths, dir_path_out, dry_run=False):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given output: %s", dir_path_out)
     attrs_list = vdj.parse_vdj_paths(ref_paths)
+    for attrs in attrs_list:
+        LOGGER.info("inferred FASTA: %s (from %s)", attrs["path"], attrs["input"])
     paths = [attrs["path"] for attrs in attrs_list]
     vdj.combine_vdj(paths, dir_path_out, dry_run=dry_run)
