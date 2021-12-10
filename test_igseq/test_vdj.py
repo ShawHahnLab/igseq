@@ -80,6 +80,69 @@ class TestParseVDJPaths(TestBase):
         self.assertEqual(attrs_list, attrs_list_exp)
 
 
+class TestParseVDJId(TestBase):
+    """Basic test of parse_vdj_id."""
+
+    def test_parse_vdj_id(self):
+        """parse_vdj_id should give dictionary of parsed attributes"""
+        # Regular IMGT
+        self.assertEqual(
+            vdj.parse_vdj_id("IGHV1-1*01"), {
+            "seqid":   "IGHV1-1*01",
+            "prefix":  "",
+            "suffix":  "",
+            "allele":  "IGHV1-1*01",
+            "gene":    "IGHV1-1",
+            "family":  "IGHV1",
+            "segment": "IGHV",
+            "locus":   "IGH"})
+        # Bernat 2021
+        self.assertEqual(
+            vdj.parse_vdj_id("IGHV1-NL_1*01_S2052"), {
+            "seqid":   "IGHV1-NL_1*01_S2052",
+            "prefix":  "",
+            "suffix":  "",
+            "allele":  "IGHV1-NL_1*01_S2052",
+            "gene":    "IGHV1-NL_1",
+            "family":  "IGHV1",
+            "segment": "IGHV",
+            "locus":   "IGH"})
+        # Ramesh 2017 as shown in SONAR, with ORF prefix and unknown scaffold
+        # placement label (-X)
+        self.assertEqual(
+            vdj.parse_vdj_id("ORF_IGHV3-AHA-X*01"), {
+            "seqid":   "ORF_IGHV3-AHA-X*01",
+            "prefix":  "ORF_",
+            "suffix":  "",
+            "allele":  "IGHV3-AHA-X*01",
+            "gene":    "IGHV3-AHA-X",
+            "family":  "IGHV3",
+            "segment": "IGHV",
+            "locus":   "IGH"})
+        # Zhang 2019 typical syntax
+        self.assertEqual(
+            vdj.parse_vdj_id("VH3.9B*01c"), {
+            "seqid":   "VH3.9B*01c",
+            "prefix":  "",
+            "suffix":  "",
+            "allele":  "VH3.9B*01c",
+            "gene":    "VH3.9B",
+            "family":  "IGHV3",
+            "segment": "IGHV",
+            "locus":   "IGH"})
+        # Zhang 2019 other syntax
+        self.assertEqual(
+            vdj.parse_vdj_id("IGHV3-9A*02c"), {
+            "seqid":   "IGHV3-9A*02c",
+            "prefix":  "",
+            "suffix":  "",
+            "allele":  "IGHV3-9A*02c",
+            "gene":    "IGHV3-9A",
+            "family":  "IGHV3",
+            "segment": "IGHV",
+            "locus":   "IGH"})
+
+
 class TestParseVDJPathsMissing(TestBase):
     """Test parse_vdj_paths with missing input."""
 
