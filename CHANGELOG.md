@@ -1,5 +1,14 @@
 # Changelog
 
+## dev
+
+### Added
+
+ * Rhesus germline HV and HJ allele FASTAs from
+   [10.4049/jimmunol.1800342](https://doi.org/10.4049/jimmunol.1800342) ([#13])
+
+[#13]: https://github.com/ShawHahnLab/igseq/pull/13
+
 ## 0.1.1 - 2021-12-07
 
 ### Changed
