@@ -177,7 +177,8 @@ def _main_convert(args):
         path_out=args.output,
         fmt_in=args.fmt_in,
         fmt_out=args.fmt_out,
-        dummyqual=args.dummyqual)
+        dummyqual=args.dummy_qual,
+        dry_run=args.dry_run)
 
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
@@ -404,6 +405,7 @@ def __setup_arg_parser():
     p_convert.add_argument("-d", "--dummy-qual",
         help="Quality score to use for all bases for applicable output types, "
         'as text (e.g. use "I" for 40)')
+    p_convert.set_defaults(func=_main_convert)
 
     return parser
 

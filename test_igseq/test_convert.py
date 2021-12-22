@@ -1,7 +1,10 @@
 import subprocess
+from gzip import open as gzopen
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from igseq.convert import convert
+from igseq.util import IgSeqError
 from .util import TestBase
 
 def gunzip(path):
@@ -53,6 +56,25 @@ class TestConvert(TestBase):
             self.assertGzipsMatch(
                 Path(tmpdir)/"unwrapped.fasta.gz",
                 Path(tmpdir)/"unwrapped2.fasta.gz")
+        # to stdout, but we need the format
+        with self.assertRaises(IgSeqError):
+            convert(self.path/"wrapped.fasta", "-")
+        # now, with the format
+        stdout, stderr = self.redirect_streams(
+            lambda: convert(self.path/"wrapped.fasta", "-", fmt_out="fa"))
+        with open(self.path/"unwrapped.fasta") as f_in:
+            stdout_exp = f_in.read()
+        self.assertEqual(stdout, stdout_exp)
+        self.assertEqual(stderr, "")
+        # or as gz
+        stdout, stderr = self.redirect_streams(
+            lambda: convert(self.path/"wrapped.fasta", "-", fmt_out="fagz"))
+        with open(self.path/"unwrapped.fasta") as f_in:
+            stdout_exp = f_in.read()
+        with gzopen(BytesIO(stdout), "rt", "ascii") as f_in:
+            stdout_txt = f_in.read()
+        self.assertEqual(stdout_txt, stdout_exp)
+        self.assertEqual(stderr, "")
 
     def test_convert_fa_fq(self):
         """Test converting fasta to fastq.
@@ -262,3 +284,16 @@ class TestConvert(TestBase):
             self.assertTxtsMatch(
                 self.path/"unwrapped_quals.tsv",
                 Path(tmpdir)/"unwrapped_quals.tsv")
+
+
+class TestConvertDryRun(TestBase):
+    """Test that convert(..., dry_run=True) doesn't touch output files."""
+
+    def test_convert_fa_fa(self):
+        """Test converting fasta to fasta with dry_run=True.
+
+        Nothing should actually be written.
+        """
+        with TemporaryDirectory() as tmpdir:
+            convert(self.path/"wrapped.fasta", Path(tmpdir)/"unwrapped.fasta", dry_run=True)
+            self.assertTrue(not (Path(tmpdir)/"unwrapped.fasta").exists())

@@ -14,11 +14,10 @@ given explicitly if needed.  The formats are:
     tsvgz: gzipped tab-separated values
 """
 
-import logging
 from .record import RecordReader, RecordWriter
 
-def convert(path_in, path_out, fmt_in=None, fmt_out=None, dummyqual=None):
-    with RecordReader(path_in, fmt_in) as reader, \
-        RecordWriter(path_out, fmt_out, dummyqual=dummyqual) as writer:
+def convert(path_in, path_out, fmt_in=None, fmt_out=None, dummyqual=None, dry_run=False):
+    with RecordReader(path_in, fmt_in, dry_run=dry_run) as reader, \
+        RecordWriter(path_out, fmt_out, dummyqual=dummyqual, dry_run=dry_run) as writer:
         for record in reader:
             writer.write(record)

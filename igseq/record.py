@@ -27,13 +27,14 @@ class RecordHandler:
     See RecordReader/RecordWriter for the main stuff.
     """
 
-    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None):
+    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None, dry_run=False):
         self.pathlike = pathlike
         self.fmt = self.infer_fmt(fmt)
         if colmap is None:
             colmap = DEFAULT_COLUMNS.copy()
         self.colmap = colmap
         self.dummyqual = dummyqual
+        self.dry_run = dry_run
         self.handle = None
 
     def __enter__(self):
@@ -49,7 +50,8 @@ class RecordHandler:
 
     def close(self):
         """Close the file handle used here, if it's not stdin/stdout."""
-        if self.handle and self.handle not in [sys.stdin, sys.stdout]:
+        std_streams = [sys.stdin, sys.stdin.buffer, sys.stdout, sys.stdout.buffer]
+        if self.handle and self.handle not in std_streams:
             self.handle.close()
 
     def infer_fmt(self, fmt=None):
@@ -129,14 +131,18 @@ class RecordReader(RecordHandler):
     record from the file (FASTA/FASTQ sequence or CSV/TSV row).
     """
 
-    def __init__(self, pathlike, fmt, colmap=None):
-        super().__init__(pathlike, fmt, colmap)
+    def __init__(self, pathlike, fmt, colmap=None, dry_run=False):
+        super().__init__(pathlike, fmt, colmap=colmap, dry_run=dry_run)
         self.reader = None
 
     def open(self):
         if self.pathlike == "-":
-            LOGGER.info("reading from stdin")
-            self.handle = sys.stdin
+            if "gz" in self.fmt:
+                LOGGER.info("reading gzip from stdin")
+                self.handle = gzip.open(sys.stdin.buffer, "rt", encoding="ascii")
+            else:
+                LOGGER.info("reading text from stdin")
+                self.handle = sys.stdin
         else:
             if "gz" in self.fmt:
                 LOGGER.info("reading from gzip")
@@ -170,28 +176,36 @@ class RecordWriter(RecordHandler):
     sequences to FASTA/FASTQ or rows to CSV/TSV).
     """
 
-    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None):
-        super().__init__(pathlike, fmt, colmap, dummyqual)
+    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None, dry_run=False):
+        super().__init__(pathlike, fmt, colmap, dummyqual, dry_run)
         self.writer = None
 
     def open(self):
         if self.pathlike == "-":
-            LOGGER.info("writing to stdout")
-            self.handle = sys.stdout
+            if "gz" in self.fmt:
+                LOGGER.info("writing gzip to stdout")
+                if not self.dry_run:
+                    self.handle = gzip.open(sys.stdout.buffer, "wt", encoding="ascii")
+            else:
+                LOGGER.info("writing text to stdout")
+                if not self.dry_run:
+                    self.handle = sys.stdout
         else:
             if "gz" in self.fmt:
                 LOGGER.info("writing to gzip")
-                self.handle = gzip.open(self.pathlike, "wt", encoding="ascii")
+                if not self.dry_run:
+                    self.handle = gzip.open(self.pathlike, "wt", encoding="ascii")
             else:
                 LOGGER.info("writing to text")
-                self.handle = open(self.pathlike, "wt", encoding="ascii")
+                if not self.dry_run:
+                    self.handle = open(self.pathlike, "wt", encoding="ascii")
 
     def write(self, record):
         """Write a record dictionary to the output stream."""
         if self.dummyqual and not self.colmap["sequence_quality"] in record:
             quals = self.dummyqual * len(record[self.colmap["sequence"]])
             record[self.colmap["sequence_quality"]] = quals
-        if not self.writer:
+        if not self.dry_run and not self.writer:
             if self.fmt in ["csv", "csvgz"]:
                 self.writer = csv.DictWriter(self.handle, fieldnames=record.keys())
                 self.writer.writeheader()
@@ -199,10 +213,12 @@ class RecordWriter(RecordHandler):
                 self.writer = csv.DictWriter(self.handle, fieldnames=record.keys(), delimiter="\t")
                 self.writer.writeheader()
         if self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]:
-            self.writer.writerow(record)
+            if not self.dry_run:
+                self.writer.writerow(record)
         elif self.fmt in ["fa", "fagz"]:
             seqrecord = self.encode_record(record)
-            SeqIO.write(seqrecord, self.handle, "fasta-2line")
+            if not self.dry_run:
+                SeqIO.write(seqrecord, self.handle, "fasta-2line")
         elif self.fmt in ["fq", "fqgz"]:
             seqrecord = self.encode_record(record)
             if not "phred_quality" in seqrecord.letter_annotations:
@@ -211,6 +227,7 @@ class RecordWriter(RecordHandler):
                     DEFAULT_DUMMY_QUAL)
                 self.dummyqual = DEFAULT_DUMMY_QUAL
             seqrecord = self.encode_record(record)
-            SeqIO.write(seqrecord, self.handle, "fastq")
+            if not self.dry_run:
+                SeqIO.write(seqrecord, self.handle, "fastq")
         else:
             raise ValueError(f"Unknown format {self.fmt}")
