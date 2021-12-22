@@ -3,7 +3,7 @@
 import unittest
 import shutil
 import random
-from io import StringIO
+from io import StringIO, BytesIO
 from contextlib import redirect_stdout, redirect_stderr
 from tempfile import TemporaryDirectory
 from pathlib import Path
@@ -116,11 +116,19 @@ class TestBase(unittest.TestCase):
 
     def redirect_streams(self, func):
         """Capture and return stdout and stderr as strings when calling func."""
+        # (the underlying buffer is used by convert() to write binary gzipped
+        # data to stdout.)
         stdout = StringIO()
+        stdout.buffer = BytesIO()
         stderr = StringIO()
         with redirect_stdout(stdout), redirect_stderr(stderr):
             func()
+        # kludgy way to get whichever "version" of stdout has something in it,
+        # preferring the regular one.
+        stdout_buffer = stdout.buffer.getvalue()
         stdout = stdout.getvalue()
+        if not stdout and stdout_buffer:
+            stdout = stdout_buffer
         stderr = stderr.getvalue()
         return stdout, stderr
 
