@@ -297,3 +297,75 @@ class TestConvertDryRun(TestBase):
         with TemporaryDirectory() as tmpdir:
             convert(self.path/"wrapped.fasta", Path(tmpdir)/"unwrapped.fasta", dry_run=True)
             self.assertTrue(not (Path(tmpdir)/"unwrapped.fasta").exists())
+
+
+class TestConvertCustomCols(TestBase):
+    """Test that convert(..., colmap=...) can customize column names used."""
+
+    def test_convert_fa_csv(self):
+        """Test converting fasta to csv.
+
+        There should be two columns of output, one for sequence IDs and one for
+        sequences, with custom column names.
+        """
+        with self.subTest("both custom columns"), TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"wrapped.fasta", Path(tmpdir)/"unwrapped.csv",
+                colmap = {"sequence_id": "SeqID", "sequence": "Seq"})
+            self.assertTxtsMatch(
+                self.path/"unwrapped.csv",
+                Path(tmpdir)/"unwrapped.csv")
+        with self.subTest("one custom column"), TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"wrapped.fasta", Path(tmpdir)/"unwrapped.csv",
+                colmap = {"sequence_id": "SeqID"})
+            self.assertTxtsMatch(
+                self.path/"unwrapped.alt1.csv",
+                Path(tmpdir)/"unwrapped.csv")
+        with self.subTest("no custom columns"), TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"wrapped.fasta", Path(tmpdir)/"unwrapped.csv",
+                colmap = {})
+            self.assertTxtsMatch(
+                self.path/"unwrapped.alt2.csv",
+                Path(tmpdir)/"unwrapped.csv")
+
+    def test_convert_fq_csv(self):
+        """Test converting fastq to csv.
+
+        There should be three columns of output, one for sequence IDs, one for
+        sequences, and one for quality scores.
+        """
+        with TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"unwrapped.fastq", Path(tmpdir)/"unwrapped.csv",
+                colmap = {"sequence_id": "SeqID", "sequence": "Seq", "sequence_quality": "SeqQual"})
+            self.assertTxtsMatch(
+                self.path/"unwrapped_quals.csv",
+                Path(tmpdir)/"unwrapped.csv")
+
+    def test_convert_csv_fa(self):
+        """Test converting csv to fasta.
+
+        It should understand how to pull from custom-named columns.
+        """
+        with TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"unwrapped.csv", Path(tmpdir)/"unwrapped.fasta",
+                colmap = {"sequence_id": "SeqID", "sequence": "Seq"})
+            self.assertTxtsMatch(
+                self.path/"unwrapped.fasta",
+                Path(tmpdir)/"unwrapped.fasta")
+
+    def test_convert_csv_fq(self):
+        """Test converting csv to fastq.
+
+        Like the csv_fa case, but it should get quality scores from custom col too.
+        """
+        with TemporaryDirectory() as tmpdir:
+            convert(
+                self.path/"unwrapped_quals.csv", Path(tmpdir)/"unwrapped.fastq",
+                colmap = {"sequence_id": "SeqID", "sequence": "Seq", "sequence_quality": "SeqQual"})
+            self.assertTxtsMatch(
+                self.path/"unwrapped.fastq",
+                Path(tmpdir)/"unwrapped.fastq")
