@@ -30,9 +30,10 @@ class RecordHandler:
     def __init__(self, pathlike, fmt, colmap=None, dummyqual=None, dry_run=False):
         self.pathlike = pathlike
         self.fmt = self.infer_fmt(fmt)
-        if colmap is None:
-            colmap = DEFAULT_COLUMNS.copy()
-        self.colmap = colmap
+        self.colmap = {}
+        self.colmap.update(DEFAULT_COLUMNS)
+        if colmap is not None:
+            self.colmap.update(colmap)
         self.dummyqual = dummyqual
         self.dry_run = dry_run
         self.handle = None
@@ -104,11 +105,11 @@ class RecordHandler:
         """Convert object (SeqRecord or dictionary) to dictionary."""
         if isinstance(obj, SeqRecord):
             record = {
-                "sequence_id": obj.id,
-                "sequence": str(obj.seq)}
+                self.colmap["sequence_id"]: obj.id,
+                self.colmap["sequence"]: str(obj.seq)}
             quals = obj.letter_annotations.get("phred_quality")
             if quals:
-                record["sequence_quality"] = self.encode_phred(quals)
+                record[self.colmap["sequence_quality"]] = self.encode_phred(quals)
         else:
             record = obj
         return record
