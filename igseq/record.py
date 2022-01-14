@@ -208,10 +208,12 @@ class RecordWriter(RecordHandler):
             record[self.colmap["sequence_quality"]] = quals
         if not self.dry_run and not self.writer:
             if self.fmt in ["csv", "csvgz"]:
-                self.writer = csv.DictWriter(self.handle, fieldnames=record.keys())
+                self.writer = csv.DictWriter(
+                    self.handle, fieldnames=record.keys(), lineterminator="\n")
                 self.writer.writeheader()
             elif self.fmt in ["tsv", "tsvgz"]:
-                self.writer = csv.DictWriter(self.handle, fieldnames=record.keys(), delimiter="\t")
+                self.writer = csv.DictWriter(
+                    self.handle, fieldnames=record.keys(), lineterminator="\n", delimiter="\t")
                 self.writer.writeheader()
         if self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]:
             if not self.dry_run:
