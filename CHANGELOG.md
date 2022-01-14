@@ -5,10 +5,11 @@
 ### Added
 
  * convert command for FASTA/FASTQ/CSV/TSV file conversion, in place of the
-   more limited tab2seq command ([#14])
+   more limited tab2seq command ([#14, #16])
  * Rhesus germline HV and HJ allele FASTAs from
    [10.4049/jimmunol.1800342](https://doi.org/10.4049/jimmunol.1800342) ([#13])
 
+[#16]: https://github.com/ShawHahnLab/igseq/pull/16
 [#14]: https://github.com/ShawHahnLab/igseq/pull/14
 [#13]: https://github.com/ShawHahnLab/igseq/pull/13
 

@@ -172,11 +172,21 @@ def _main_vdj_match(args):
         dry_run=args.dry_run)
 
 def _main_convert(args):
+    # convert arguments like "col_seq_id" to "sequence_id"
+    colmap = {}
+    longer = {"desc": "description", "seq": "sequence", "qual": "quality"}
+    for key, val in vars(args).items():
+        if key.startswith("col") and val is not None:
+            key_long = key.split("_")[1:]
+            key_long = [longer.get(word, word) for word in key_long]
+            key_long = "_".join(key_long)
+            colmap[key_long] = val
     convert.convert(
         path_in=args.input,
         path_out=args.output,
         fmt_in=args.fmt_in,
         fmt_out=args.fmt_out,
+        colmap=colmap,
         dummyqual=args.dummy_qual,
         dry_run=args.dry_run)
 
@@ -402,6 +412,14 @@ def __setup_arg_parser():
     p_convert.add_argument("--fmt-out",
         help="format of output "
         "(default: detect from output filename if possible)")
+    p_convert.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (tabular input/output)")
+    p_convert.add_argument("--col-seq",
+        help="Name of column containing sequences (tabular input/output)")
+    p_convert.add_argument("--col-seq-qual",
+        help="Name of column containing sequence qualities (tabular input/output)")
+    p_convert.add_argument("--col-seq-desc",
+        help="Name of column containing sequence descriptions (tabular input/output)")
     p_convert.add_argument("-d", "--dummy-qual",
         help="Quality score to use for all bases for applicable output types, "
         'as text (e.g. use "I" for 40)')
