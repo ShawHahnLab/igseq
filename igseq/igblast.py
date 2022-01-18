@@ -13,11 +13,13 @@ dashes if needed to force igseq to handle it correctly (for example,
 --num_alignments_V will work).
 """
 
+import os
 import re
 import sys
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-import subprocess
+from subprocess import run, Popen, PIPE, DEVNULL
 from tempfile import TemporaryDirectory
 from . import util
 from . import aux
@@ -69,17 +71,23 @@ def igblast(
     species_det = {s for s in species_det if s}
     organism = detect_organism(species_det, species)
     if not dry_run:
-        try:
-            proc, _ = setup_db_dir_and_igblast(
-                [attrs["path"] for attrs in attrs_list],
-                organism, query_path, db_path, threads, extra_args,
-                capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as err:
-            sys.stdout.write(err.stdout)
-            sys.stderr.write(err.stderr)
-            raise util.IgSeqError("IgBLAST crashed") from err
-        sys.stdout.write(proc.stdout)
-        sys.stderr.write(proc.stderr)
+        with setup_db_dir([attrs["path"] for attrs in attrs_list], db_path) as (db_dir, _):
+            with run_igblast(db_dir, organism, query_path, threads, extra_args) as proc:
+                # https://stackoverflow.com/a/66410605
+                os.set_blocking(proc.stdout.fileno(), False)
+                os.set_blocking(proc.stderr.fileno(), False)
+                while proc.poll() is None:
+                    for stdout_line in proc.stdout:
+                        sys.stdout.write(stdout_line)
+                        if proc.poll() is not None:
+                            break
+                    for stderr_line in proc.stderr:
+                        sys.stderr.write(stderr_line)
+                        if proc.poll() is not None:
+                            break
+                if proc.returncode:
+                    LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
+                    raise util.IgSeqError("IgBLAST crashed")
 
 def detect_organism(species_det, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
@@ -114,9 +122,62 @@ def detect_organism(species_det, species=None):
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
 
-def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
-        db_path=None, threads=1, extra_args=None, **runargs):
-    """Run igblastn with automatic database setup"""
+@contextmanager
+def run_igblast(
+    db_dir, organism, query_path, threads=1, extra_args=None, stdin=None, stdout=PIPE, stderr=PIPE):
+    """Start an igblastn process with an already-prepped database directory.
+
+    Run as a context manager; this will yield a Popen object for the running
+    process and automatically handle cleanup.
+
+    db_dir: path to directory with V, D, J, and auxiliary files. (See
+            setup_db_dir.)
+    organism: name of organism as expected by igblastn (e.g. "rhesus_monkey")
+    query_path: path to FASTA for query
+    threads: number of threads for parallel processing with IgBLAST
+    extra_args: list of arguments to pass to igblastn command.  Must not
+                overlap with the arguments set here.
+    stdin: argument to Popen; default does nothing with stdin
+    stdout: argument to Popen; default captures stdout text as a stream
+    stderr: argument to Popen; default captures stderr text as a stream
+    """
+    args = [
+        "-germline_db_V", f"{db_dir}/V",
+        "-germline_db_D", f"{db_dir}/D",
+        "-germline_db_J", f"{db_dir}/J",
+        "-auxiliary_data", f"{db_dir}/gl.aux",
+        "-organism", organism,
+        "-query", query_path,
+        "-ig_seqtype", "Ig",
+        "-num_threads", threads]
+    if extra_args:
+        # remove any extra - at the start
+        extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
+        # make sure none of the extra arguments, if there are any, clash
+        # with the ones we've defined above.
+        args_dashes = {arg for arg in args if str(arg).startswith("-")}
+        extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
+        shared = args_dashes & extra_dashes
+        if shared:
+            raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
+        args += extra_args
+    args = [IGBLASTN] + [str(arg) for arg in args]
+    LOGGER.info("igblastn command: %s", args)
+    with Popen(args, stdin=stdin, stdout=stdout, stderr=stderr, text=True) as proc:
+        yield proc
+
+@contextmanager
+def setup_db_dir(vdj_ref_paths, db_path=None):
+    """Set up a directory with database files for igblast.
+
+    Run as a context manager; this will yield the path to the prepared
+    directory with V, D, and J databases and the auxiliary data file, and will
+    automatically handle cleanup if a temporary directory is used (the
+    default).  If a db_path is given the files will not be removed afterward.
+
+    vdj_ref_paths: list of V/D/J FASTA files to gather into the db dir.
+    db_path: custom path for database output (default: temporary directory)
+    """
     with TemporaryDirectory() as tmp:
         if db_path:
             db_dir = Path(db_path)
@@ -124,59 +185,20 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         else:
             db_dir = Path(tmp)
             LOGGER.info("inferred DB directory: %s", db_dir)
-
         attrs_list = vdj.combine_vdj(vdj_ref_paths, db_dir)
         for segment, attrs in vdj.group(attrs_list).items():
             LOGGER.info("detected %s references: %d", segment, len(attrs))
             if len(attrs) == 0:
                 raise util.IgSeqError(f"No references for segment {segment}")
-        aux.make_aux_file(db_dir/"J.fasta", db_dir/f"{organism}_gl.aux")
-        makeblastdbs(db_dir)
-        args = [
-            "-germline_db_V", f"{db_dir}/V",
-            "-germline_db_D", f"{db_dir}/D",
-            "-germline_db_J", f"{db_dir}/J",
-            "-query", query_path,
-            "-auxiliary_data", f"{db_dir}/{organism}_gl.aux",
-            "-organism", organism,
-            "-ig_seqtype", "Ig",
-            "-num_threads", threads]
-        if extra_args:
-            # remove any extra - at the start
-            extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
-            # make sure none of the extra arguments, if there are any, clash
-            # with the ones we've defined above.
-            args_dashes = {arg for arg in args if str(arg).startswith("-")}
-            extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
-            shared = args_dashes & extra_dashes
-            if shared:
-                raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
-            args += extra_args
-        proc = _run_igblastn(args, **runargs)
-        return proc, attrs_list
-
-def makeblastdbs(dir_path):
-    """Run makeblastdb for existing V.fasta, D.fasta, J.fasta in a directory."""
-    for segment in ["V", "D", "J"]:
-        _run_makeblastdb(f"{dir_path}/{segment}.fasta")
-
-def _run_makeblastdb(path_fasta):
-    path_fasta = Path(path_fasta)
-    args = [
-        MAKEBLASTDB,
-        "-dbtype", "nucl",
-        "-parse_seqids",
-        "-in", path_fasta,
-        "-out", path_fasta.parent/path_fasta.stem]
-    args = [str(arg) for arg in args]
-    subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-
-def _run_igblastn(args, **runargs):
-    """Call igblastn with the given list of arguments.
-
-    Any extra keyword arguments are passed to subprocess.run.
-    """
-    args = [IGBLASTN] + [str(arg) for arg in args]
-    LOGGER.info("igblastn command: %s", args)
-    LOGGER.info("igblastn subprocess.run args: %s", runargs)
-    return subprocess.run(args, **runargs) # pylint: disable=subprocess-run-check
+        aux.make_aux_file(db_dir/"J.fasta", db_dir/"gl.aux")
+        for segment in ["V", "D", "J"]:
+            path_fasta = Path(f"{db_dir}/{segment}.fasta")
+            args = [
+                MAKEBLASTDB,
+                "-dbtype", "nucl",
+                "-parse_seqids",
+                "-in", path_fasta,
+                "-out", path_fasta.parent/path_fasta.stem]
+            args = [str(arg) for arg in args]
+            run(args, check=True, stdout=DEVNULL)
+        yield db_dir, attrs_list
