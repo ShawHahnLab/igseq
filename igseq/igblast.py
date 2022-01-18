@@ -24,6 +24,7 @@ from tempfile import TemporaryDirectory
 from . import util
 from . import aux
 from . import vdj
+from .record import RecordReader, RecordWriter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,19 +73,24 @@ def igblast(
     organism = detect_organism(species_det, species)
     if not dry_run:
         with setup_db_dir([attrs["path"] for attrs in attrs_list], db_path) as (db_dir, _):
-            with run_igblast(db_dir, organism, query_path, threads, extra_args) as proc:
+            with run_igblast(db_dir, organism, "-", threads, extra_args, stdin=PIPE) as proc:
                 # https://stackoverflow.com/a/66410605
                 os.set_blocking(proc.stdout.fileno(), False)
                 os.set_blocking(proc.stderr.fileno(), False)
-                while proc.poll() is None:
-                    for stdout_line in proc.stdout:
-                        sys.stdout.write(stdout_line)
-                        if proc.poll() is not None:
-                            break
-                    for stderr_line in proc.stderr:
-                        sys.stderr.write(stderr_line)
-                        if proc.poll() is not None:
-                            break
+                # read whatever format from the query file, write FASTA to the
+                # igblastn proc's stdin
+                with RecordReader(query_path, None) as reader, RecordWriter(proc.stdin, "fa") as writer:
+                    while proc.poll() is None:
+                        try:
+                            rec = next(reader)
+                        except StopIteration:
+                            proc.stdin.close()
+                        else:
+                            writer.write(rec)
+                        for stdout_line in proc.stdout:
+                            sys.stdout.write(stdout_line)
+                        for stderr_line in proc.stderr:
+                            sys.stderr.write(stderr_line)
                 if proc.returncode:
                     LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
                     raise util.IgSeqError("IgBLAST crashed")

@@ -27,7 +27,7 @@ class RecordHandler:
     See RecordReader/RecordWriter for the main stuff.
     """
 
-    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None, dry_run=False):
+    def __init__(self, pathlike, fmt=None, colmap=None, dummyqual=None, dry_run=False):
         self.pathlike = pathlike
         self.fmt = self.infer_fmt(fmt)
         self.colmap = {}
@@ -37,6 +37,7 @@ class RecordHandler:
         self.dummyqual = dummyqual
         self.dry_run = dry_run
         self.handle = None
+        self.autoclose = True
 
     def __enter__(self):
         self.open()
@@ -52,12 +53,19 @@ class RecordHandler:
     def close(self):
         """Close the file handle used here, if it's not stdin/stdout."""
         std_streams = [sys.stdin, sys.stdin.buffer, sys.stdout, sys.stdout.buffer]
-        if self.handle and self.handle not in std_streams:
-            self.handle.close()
+        # Flush to handle the case of an already-opened handle that won't be
+        # closed here
+        if self.handle and not self.handle.closed:
+            self.handle.flush()
+            if self.handle not in std_streams and self.autoclose:
+                self.handle.close()
 
     def infer_fmt(self, fmt=None):
         """Guess file format from our path, with optional default."""
-        path = Path(self.pathlike)
+        try:
+            path = Path(self.pathlike)
+        except TypeError:
+            path = Path(str(self.pathlike.name))
         fmt_inferred = None
         if path.suffix.lower() in [".csv"]:
             fmt_inferred = "csv"
@@ -132,7 +140,7 @@ class RecordReader(RecordHandler):
     record from the file (FASTA/FASTQ sequence or CSV/TSV row).
     """
 
-    def __init__(self, pathlike, fmt, colmap=None, dry_run=False):
+    def __init__(self, pathlike, fmt=None, colmap=None, dry_run=False):
         super().__init__(pathlike, fmt, colmap=colmap, dry_run=dry_run)
         self.reader = None
 
@@ -177,12 +185,15 @@ class RecordWriter(RecordHandler):
     sequences to FASTA/FASTQ or rows to CSV/TSV).
     """
 
-    def __init__(self, pathlike, fmt, colmap=None, dummyqual=None, dry_run=False):
+    def __init__(self, pathlike, fmt=None, colmap=None, dummyqual=None, dry_run=False):
         super().__init__(pathlike, fmt, colmap, dummyqual, dry_run)
         self.writer = None
 
     def open(self):
-        if self.pathlike == "-":
+        if hasattr(self.pathlike, "fileno"):
+            self.handle = self.pathlike
+            self.autoclose = False
+        elif self.pathlike == "-":
             if "gz" in self.fmt:
                 LOGGER.info("writing gzip to stdout")
                 if not self.dry_run:
