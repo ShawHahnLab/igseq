@@ -12,7 +12,7 @@ igseq convert $EXAMPLES/inputs/convert/wrapped.fasta unwrapped.csv
 igseq convert $EXAMPLES/inputs/convert/unwrapped.fastq.gz unwrapped2.fasta
 
 # a - can be used for stdin/stdout, but the format has to be given explicitly:
-igseq convert --fmt-in fa --fmt-out fa - - < $EXAMPLES/inputs/convert/wrapped.fasta > unwrapped3.fasta
+igseq convert --input-format fa --output-format fa - - < $EXAMPLES/inputs/convert/wrapped.fasta > unwrapped3.fasta
 
 # other table formats can be converted to FASTA or FASTQ if the column names to
 # use are specified.  the default would find sequence_id and sequence columns

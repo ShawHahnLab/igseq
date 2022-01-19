@@ -3,7 +3,8 @@ Run IgBLAST, automatically building databases and the auxiliary data file.
 
 This will gather up whatever combination of reference sequences are given,
 build one set of V/D/J database files and one J gene auxiliary data file, and
-run igblastn with a query FASTA.
+run igblastn with a given query.  The query can be in any file format supported
+by the convert command and can be given as "-" for standard input.
 
 Any command-line arguments not recognized here are passed as-is to the igblastn
 command, so you can configure things like the output format and file path.  See
@@ -13,15 +14,18 @@ dashes if needed to force igseq to handle it correctly (for example,
 --num_alignments_V will work).
 """
 
+import os
 import re
 import sys
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-import subprocess
+from subprocess import run, Popen, PIPE, DEVNULL
 from tempfile import TemporaryDirectory
 from . import util
 from . import aux
 from . import vdj
+from .record import RecordReader, RecordWriter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +45,7 @@ SPECIESOTHER = {
     "rhesusmonkey": "rhesus"}
 
 def igblast(
-    ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
+    ref_paths, query_path, db_path=None, species=None, fmt_in=None, colmap=None, extra_args=None, dry_run=False, threads=1):
     """Make temporary IgBLAST DB files and run a query with them.
 
     ref_paths: list of FASTA files/directories/built-in reference names to use
@@ -50,6 +54,8 @@ def igblast(
     db_path: If given, store database files in this directory name and don't
              remove them after running
     species: species name ("human" or "rhesus")
+    fmt_in: query input file format (default: detect via filename)
+    colmap: dictionary of column name mappings for tabular input
     extra_args: list of arguments to pass to igblastn command.  Must not
                 overlap with the arguments set here.
     dry_run: If True, don't actually call any commands or write any files
@@ -58,6 +64,8 @@ def igblast(
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
     LOGGER.info("given species: %s", species)
+    LOGGER.info("given input format: %s", fmt_in)
+    LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
@@ -69,17 +77,29 @@ def igblast(
     species_det = {s for s in species_det if s}
     organism = detect_organism(species_det, species)
     if not dry_run:
-        try:
-            proc, _ = setup_db_dir_and_igblast(
-                [attrs["path"] for attrs in attrs_list],
-                organism, query_path, db_path, threads, extra_args,
-                capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as err:
-            sys.stdout.write(err.stdout)
-            sys.stderr.write(err.stderr)
-            raise util.IgSeqError("IgBLAST crashed") from err
-        sys.stdout.write(proc.stdout)
-        sys.stderr.write(proc.stderr)
+        with setup_db_dir([attrs["path"] for attrs in attrs_list], db_path) as (db_dir, _):
+            with run_igblast(db_dir, organism, "-", threads, extra_args, stdin=PIPE) as proc:
+                # https://stackoverflow.com/a/66410605
+                os.set_blocking(proc.stdout.fileno(), False)
+                os.set_blocking(proc.stderr.fileno(), False)
+                # read whatever format from the query file, write FASTA to the
+                # igblastn proc's stdin
+                with RecordReader(query_path, fmt_in, colmap) as reader, \
+                    RecordWriter(proc.stdin, "fa", colmap) as writer:
+                    while proc.poll() is None:
+                        try:
+                            rec = next(reader)
+                        except StopIteration:
+                            proc.stdin.close()
+                        else:
+                            writer.write(rec)
+                        for stdout_line in proc.stdout:
+                            sys.stdout.write(stdout_line)
+                        for stderr_line in proc.stderr:
+                            sys.stderr.write(stderr_line)
+                if proc.returncode:
+                    LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
+                    raise util.IgSeqError("IgBLAST crashed")
 
 def detect_organism(species_det, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
@@ -114,9 +134,62 @@ def detect_organism(species_det, species=None):
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
 
-def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
-        db_path=None, threads=1, extra_args=None, **runargs):
-    """Run igblastn with automatic database setup"""
+@contextmanager
+def run_igblast(
+    db_dir, organism, query_path, threads=1, extra_args=None, stdin=None, stdout=PIPE, stderr=PIPE):
+    """Start an igblastn process with an already-prepped database directory.
+
+    Run as a context manager; this will yield a Popen object for the running
+    process and automatically handle cleanup.
+
+    db_dir: path to directory with V, D, J, and auxiliary files. (See
+            setup_db_dir.)
+    organism: name of organism as expected by igblastn (e.g. "rhesus_monkey")
+    query_path: path to FASTA for query
+    threads: number of threads for parallel processing with IgBLAST
+    extra_args: list of arguments to pass to igblastn command.  Must not
+                overlap with the arguments set here.
+    stdin: argument to Popen; default does nothing with stdin
+    stdout: argument to Popen; default captures stdout text as a stream
+    stderr: argument to Popen; default captures stderr text as a stream
+    """
+    args = [
+        "-germline_db_V", f"{db_dir}/V",
+        "-germline_db_D", f"{db_dir}/D",
+        "-germline_db_J", f"{db_dir}/J",
+        "-auxiliary_data", f"{db_dir}/gl.aux",
+        "-organism", organism,
+        "-query", query_path,
+        "-ig_seqtype", "Ig",
+        "-num_threads", threads]
+    if extra_args:
+        # remove any extra - at the start
+        extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
+        # make sure none of the extra arguments, if there are any, clash
+        # with the ones we've defined above.
+        args_dashes = {arg for arg in args if str(arg).startswith("-")}
+        extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
+        shared = args_dashes & extra_dashes
+        if shared:
+            raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
+        args += extra_args
+    args = [IGBLASTN] + [str(arg) for arg in args]
+    LOGGER.info("igblastn command: %s", args)
+    with Popen(args, stdin=stdin, stdout=stdout, stderr=stderr, text=True) as proc:
+        yield proc
+
+@contextmanager
+def setup_db_dir(vdj_ref_paths, db_path=None):
+    """Set up a directory with database files for igblast.
+
+    Run as a context manager; this will yield the path to the prepared
+    directory with V, D, and J databases and the auxiliary data file, and will
+    automatically handle cleanup if a temporary directory is used (the
+    default).  If a db_path is given the files will not be removed afterward.
+
+    vdj_ref_paths: list of V/D/J FASTA files to gather into the db dir.
+    db_path: custom path for database output (default: temporary directory)
+    """
     with TemporaryDirectory() as tmp:
         if db_path:
             db_dir = Path(db_path)
@@ -124,59 +197,20 @@ def setup_db_dir_and_igblast(vdj_ref_paths, organism, query_path,
         else:
             db_dir = Path(tmp)
             LOGGER.info("inferred DB directory: %s", db_dir)
-
         attrs_list = vdj.combine_vdj(vdj_ref_paths, db_dir)
         for segment, attrs in vdj.group(attrs_list).items():
             LOGGER.info("detected %s references: %d", segment, len(attrs))
             if len(attrs) == 0:
                 raise util.IgSeqError(f"No references for segment {segment}")
-        aux.make_aux_file(db_dir/"J.fasta", db_dir/f"{organism}_gl.aux")
-        makeblastdbs(db_dir)
-        args = [
-            "-germline_db_V", f"{db_dir}/V",
-            "-germline_db_D", f"{db_dir}/D",
-            "-germline_db_J", f"{db_dir}/J",
-            "-query", query_path,
-            "-auxiliary_data", f"{db_dir}/{organism}_gl.aux",
-            "-organism", organism,
-            "-ig_seqtype", "Ig",
-            "-num_threads", threads]
-        if extra_args:
-            # remove any extra - at the start
-            extra_args = [re.sub("^--", "-", arg) for arg in extra_args]
-            # make sure none of the extra arguments, if there are any, clash
-            # with the ones we've defined above.
-            args_dashes = {arg for arg in args if str(arg).startswith("-")}
-            extra_dashes = {arg for arg in extra_args if str(arg).startswith("-")}
-            shared = args_dashes & extra_dashes
-            if shared:
-                raise util.IgSeqError(f"igblastn arg collision from extra arguments: {shared}")
-            args += extra_args
-        proc = _run_igblastn(args, **runargs)
-        return proc, attrs_list
-
-def makeblastdbs(dir_path):
-    """Run makeblastdb for existing V.fasta, D.fasta, J.fasta in a directory."""
-    for segment in ["V", "D", "J"]:
-        _run_makeblastdb(f"{dir_path}/{segment}.fasta")
-
-def _run_makeblastdb(path_fasta):
-    path_fasta = Path(path_fasta)
-    args = [
-        MAKEBLASTDB,
-        "-dbtype", "nucl",
-        "-parse_seqids",
-        "-in", path_fasta,
-        "-out", path_fasta.parent/path_fasta.stem]
-    args = [str(arg) for arg in args]
-    subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-
-def _run_igblastn(args, **runargs):
-    """Call igblastn with the given list of arguments.
-
-    Any extra keyword arguments are passed to subprocess.run.
-    """
-    args = [IGBLASTN] + [str(arg) for arg in args]
-    LOGGER.info("igblastn command: %s", args)
-    LOGGER.info("igblastn subprocess.run args: %s", runargs)
-    return subprocess.run(args, **runargs) # pylint: disable=subprocess-run-check
+        aux.make_aux_file(db_dir/"J.fasta", db_dir/"gl.aux")
+        for segment in ["V", "D", "J"]:
+            path_fasta = Path(f"{db_dir}/{segment}.fasta")
+            args = [
+                MAKEBLASTDB,
+                "-dbtype", "nucl",
+                "-parse_seqids",
+                "-in", path_fasta,
+                "-out", path_fasta.parent/path_fasta.stem]
+            args = [str(arg) for arg in args]
+            run(args, check=True, stdout=DEVNULL)
+        yield db_dir, attrs_list

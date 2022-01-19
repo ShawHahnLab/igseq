@@ -6,9 +6,7 @@ reference specified as a separate database.
 """
 
 import logging
-import subprocess
 from csv import DictReader, DictWriter
-from io import StringIO
 from pathlib import Path
 from . import util
 from . import igblast
@@ -49,25 +47,25 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         results = []
         for key, trio in vdj_files_grouped.items():
             paths = [attrs["path"] for attrs in trio["V"] + trio["D"] + trio["J"]]
-            proc, _ = igblast.setup_db_dir_and_igblast(
-                paths, organism, query, threads=threads, extra_args=["-outfmt", "19"],
-                stdout=subprocess.PIPE, text=True, check=True)
-            reader = DictReader(StringIO(proc.stdout), delimiter="\t")
-            for row in reader:
-                for segment in ["v", "d", "j"]:
-                    try:
-                        start = int(row[f"{segment}_sequence_start"])
-                        stop = int(row[f"{segment}_sequence_end"])
-                        length = stop - start + 1
-                    except ValueError:
-                        length = ""
-                    results.append({
-                        "query": row["sequence_id"],
-                        "reference": key,
-                        "segment": segment.upper(),
-                        "call": row[f"{segment}_call"],
-                        "length": length,
-                        "identity": row[f"{segment}_identity"]})
+            with igblast.setup_db_dir(paths) as (db_dir, _):
+                with igblast.run_igblast(db_dir, organism, query, threads,
+                        extra_args=["-outfmt", "19"], stderr=None) as proc:
+                    reader = DictReader(proc.stdout, delimiter="\t")
+                    for row in reader:
+                        for segment in ["v", "d", "j"]:
+                            try:
+                                start = int(row[f"{segment}_sequence_start"])
+                                stop = int(row[f"{segment}_sequence_end"])
+                                length = stop - start + 1
+                            except ValueError:
+                                length = ""
+                            results.append({
+                                "query": row["sequence_id"],
+                                "reference": key,
+                                "segment": segment.upper(),
+                                "call": row[f"{segment}_call"],
+                                "length": length,
+                                "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
             show.show_grid(results)
