@@ -34,6 +34,7 @@ class RecordHandler:
         self.colmap.update(DEFAULT_COLUMNS)
         if colmap is not None:
             self.colmap.update(colmap)
+        LOGGER.info("colmap: %s", self.colmap)
         self.dummyqual = dummyqual
         self.dry_run = dry_run
         self.handle = None

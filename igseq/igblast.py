@@ -3,7 +3,8 @@ Run IgBLAST, automatically building databases and the auxiliary data file.
 
 This will gather up whatever combination of reference sequences are given,
 build one set of V/D/J database files and one J gene auxiliary data file, and
-run igblastn with a query FASTA.
+run igblastn with a given query.  The query can be in any file format supported
+by the convert command and can be given as "-" for standard input.
 
 Any command-line arguments not recognized here are passed as-is to the igblastn
 command, so you can configure things like the output format and file path.  See
@@ -44,7 +45,7 @@ SPECIESOTHER = {
     "rhesusmonkey": "rhesus"}
 
 def igblast(
-    ref_paths, query_path, db_path=None, species=None, extra_args=None, dry_run=False, threads=1):
+    ref_paths, query_path, db_path=None, species=None, fmt_in=None, colmap=None, extra_args=None, dry_run=False, threads=1):
     """Make temporary IgBLAST DB files and run a query with them.
 
     ref_paths: list of FASTA files/directories/built-in reference names to use
@@ -53,6 +54,8 @@ def igblast(
     db_path: If given, store database files in this directory name and don't
              remove them after running
     species: species name ("human" or "rhesus")
+    fmt_in: query input file format (default: detect via filename)
+    colmap: dictionary of column name mappings for tabular input
     extra_args: list of arguments to pass to igblastn command.  Must not
                 overlap with the arguments set here.
     dry_run: If True, don't actually call any commands or write any files
@@ -61,6 +64,8 @@ def igblast(
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
     LOGGER.info("given species: %s", species)
+    LOGGER.info("given input format: %s", fmt_in)
+    LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
     LOGGER.info("given db_path: %s", db_path)
@@ -79,7 +84,8 @@ def igblast(
                 os.set_blocking(proc.stderr.fileno(), False)
                 # read whatever format from the query file, write FASTA to the
                 # igblastn proc's stdin
-                with RecordReader(query_path, None) as reader, RecordWriter(proc.stdin, "fa") as writer:
+                with RecordReader(query_path, fmt_in, colmap) as reader, \
+                    RecordWriter(proc.stdin, "fa", colmap) as writer:
                     while proc.poll() is None:
                         try:
                             rec = next(reader)
