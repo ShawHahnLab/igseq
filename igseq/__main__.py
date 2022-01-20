@@ -167,12 +167,15 @@ def _main_igblast(args, extra_igblastn_args=None):
         threads=args.threads)
 
 def _main_summarize(args):
+    colmap = args_to_colmap(args)
     summarize.summarize(
         ref_paths=args.reference,
         query=args.query,
         output=args.output,
         showtxt=args.show,
         species=args.species,
+        fmt_in=args.input_format,
+        colmap=colmap,
         dry_run=args.dry_run)
 
 def _main_vdj_gather(args):
@@ -182,12 +185,15 @@ def _main_vdj_gather(args):
         dry_run=args.dry_run)
 
 def _main_vdj_match(args):
+    colmap = args_to_colmap(args)
     vdj_match.vdj_match(
         ref_paths=args.reference,
         query=args.query,
         output=args.output,
         showtxt=args.show,
         species=args.species,
+        fmt_in=args.input_format,
+        colmap=colmap,
         dry_run=args.dry_run)
 
 def _main_convert(args):
@@ -374,7 +380,7 @@ def __setup_arg_parser():
     p_igblast.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
     p_igblast.add_argument("--input-format",
-        help="format of query input"
+        help="format of query input "
         "(default: detect from input filename if possible)")
     p_igblast.add_argument("--col-seq-id",
         help="Name of column containing sequence IDs (for tabular query input)")
@@ -391,6 +397,13 @@ def __setup_arg_parser():
         help="query FASTA")
     p_summarize.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_summarize.add_argument("--input-format",
+        help="format of query input "
+        "(default: detect from input filename if possible)")
+    p_summarize.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular query input)")
+    p_summarize.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular query input)")
     p_summarize.add_argument("-o", "--output",
         help="Output filename")
     p_summarize.add_argument("--show", action=argparse.BooleanOptionalAction,
@@ -412,6 +425,13 @@ def __setup_arg_parser():
         help="query FASTA")
     p_vdj_match.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_vdj_match.add_argument("--input-format",
+        help="format of query input "
+        "(default: detect from input filename if possible)")
+    p_vdj_match.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular query input)")
+    p_vdj_match.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular query input)")
     p_vdj_match.add_argument("-o", "--output",
         help="Output filename")
     p_vdj_match.add_argument("--show", action=argparse.BooleanOptionalAction,
@@ -425,10 +445,10 @@ def __setup_arg_parser():
     p_convert.add_argument("output",
         help="output file path, or a literal '-' for standard output")
     p_convert.add_argument("--input-format",
-        help="format of input"
+        help="format of input "
         "(default: detect from input filename if possible)")
     p_convert.add_argument("--output-format",
-        help="format of output"
+        help="format of output "
         "(default: detect from output filename if possible)")
     p_convert.add_argument("--col-seq-id",
         help="Name of column containing sequence IDs (for tabular input/output)")
