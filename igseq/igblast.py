@@ -14,10 +14,10 @@ dashes if needed to force igseq to handle it correctly (for example,
 --num_alignments_V will work).
 """
 
-import os
 import re
 import sys
 import logging
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import run, Popen, PIPE, DEVNULL
@@ -45,12 +45,13 @@ SPECIESOTHER = {
     "rhesusmonkey": "rhesus"}
 
 def igblast(
-    ref_paths, query_path, db_path=None, species=None, fmt_in=None, colmap=None, extra_args=None, dry_run=False, threads=1):
+    ref_paths, query_path, db_path=None, species=None, fmt_in=None, colmap=None, extra_args=None,
+    dry_run=False, threads=1):
     """Make temporary IgBLAST DB files and run a query with them.
 
     ref_paths: list of FASTA files/directories/built-in reference names to use
                for the databases
-    query_path: path to FASTA with sequences to check
+    query_path: path to query (any supported format; will convert to FASTA)
     db_path: If given, store database files in this directory name and don't
              remove them after running
     species: species name ("human" or "rhesus")
@@ -63,12 +64,12 @@ def igblast(
     """
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query_path)
+    LOGGER.info("given db_path: %s", db_path)
     LOGGER.info("given species: %s", species)
     LOGGER.info("given input format: %s", fmt_in)
     LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
-    LOGGER.info("given db_path: %s", db_path)
     attrs_list = vdj.parse_vdj_paths(ref_paths)
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
@@ -77,29 +78,12 @@ def igblast(
     species_det = {s for s in species_det if s}
     organism = detect_organism(species_det, species)
     if not dry_run:
-        with setup_db_dir([attrs["path"] for attrs in attrs_list], db_path) as (db_dir, _):
-            with run_igblast(db_dir, organism, "-", threads, extra_args, stdin=PIPE) as proc:
-                # https://stackoverflow.com/a/66410605
-                os.set_blocking(proc.stdout.fileno(), False)
-                os.set_blocking(proc.stderr.fileno(), False)
-                # read whatever format from the query file, write FASTA to the
-                # igblastn proc's stdin
-                with RecordReader(query_path, fmt_in, colmap) as reader, \
-                    RecordWriter(proc.stdin, "fa", colmap) as writer:
-                    while proc.poll() is None:
-                        try:
-                            rec = next(reader)
-                        except StopIteration:
-                            proc.stdin.close()
-                        else:
-                            writer.write(rec)
-                        for stdout_line in proc.stdout:
-                            sys.stdout.write(stdout_line)
-                        for stderr_line in proc.stderr:
-                            sys.stderr.write(stderr_line)
-                if proc.returncode:
-                    LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
-                    raise util.IgSeqError("IgBLAST crashed")
+        vdj_ref_paths = [attrs["path"] for attrs in attrs_list]
+        with setup_db_dir(vdj_ref_paths, db_path) as (db_dir, _):
+            with run_igblast(
+                db_dir, organism, query_path, threads, fmt_in, colmap, extra_args) as proc:
+                for line in proc.stdout:
+                    sys.stdout.write(line)
 
 def detect_organism(species_det, species=None):
     """Determine IgBLAST organism name from multiple species name inputs
@@ -136,22 +120,21 @@ def detect_organism(species_det, species=None):
 
 @contextmanager
 def run_igblast(
-    db_dir, organism, query_path, threads=1, extra_args=None, stdin=None, stdout=PIPE, stderr=PIPE):
+    db_dir, organism, query_path, threads=1, fmt_in=None, colmap=None, extra_args=None):
     """Start an igblastn process with an already-prepped database directory.
-
-    Run as a context manager; this will yield a Popen object for the running
-    process and automatically handle cleanup.
 
     db_dir: path to directory with V, D, J, and auxiliary files. (See
             setup_db_dir.)
     organism: name of organism as expected by igblastn (e.g. "rhesus_monkey")
-    query_path: path to FASTA for query
+    query_path: path to query (any supported format; will convert to FASTA)
     threads: number of threads for parallel processing with IgBLAST
+    fmt_in: query input file format (default: detect via filename)
+    colmap: dictionary of column name mappings for tabular input
     extra_args: list of arguments to pass to igblastn command.  Must not
                 overlap with the arguments set here.
-    stdin: argument to Popen; default does nothing with stdin
-    stdout: argument to Popen; default captures stdout text as a stream
-    stderr: argument to Popen; default captures stderr text as a stream
+
+    Run as a context manager; this will yield a Popen object for the running
+    process and automatically handle cleanup.
     """
     args = [
         "-germline_db_V", f"{db_dir}/V",
@@ -159,7 +142,6 @@ def run_igblast(
         "-germline_db_J", f"{db_dir}/J",
         "-auxiliary_data", f"{db_dir}/gl.aux",
         "-organism", organism,
-        "-query", query_path,
         "-ig_seqtype", "Ig",
         "-num_threads", threads]
     if extra_args:
@@ -175,20 +157,70 @@ def run_igblast(
         args += extra_args
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
-    with Popen(args, stdin=stdin, stdout=stdout, stderr=stderr, text=True) as proc:
+    # bufsize=1 means line buffered
+    with Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True, bufsize=1) as proc:
+        # stdin and stderr are handled in separate threads to avoid the risk of
+        # deadlock.  This way all we have to do in the block yielded from here
+        # is handle proc.stdout.  When that block returns, we'll handle the
+        # cleanup here.
+        def stdin_writer():
+            # read whatever format from the query file, write FASTA to the
+            # igblastn proc's stdin
+            try:
+                with RecordReader(query_path, fmt_in, colmap) as reader, \
+                    RecordWriter(proc.stdin, "fa", colmap) as writer:
+                    for rec in reader:
+                        writer.write(rec)
+            # whatever else happens here, try to close the process' stdin, so
+            # we don't leave things hanging.  A ValueError is raised if the
+            # pipe is already closed, but if that's not the case, re-raise that
+            # exception if it occurs.
+            finally:
+                try:
+                    proc.stdin.close()
+                except ValueError:
+                    if not proc.stdin.closed:
+                        raise
+        def stderr_reader():
+            # all this does is catch stderr line-by-line and write it to our
+            # stderr.  this way it can be captured by contextlib.redirect_stderr.
+            # The warning in the contextlib docs about thatbeing "not suitable
+            # for use in library code and most threaded applications"
+            # notwithstanding, it does seem to work here.
+            for line in proc.stderr:
+                sys.stderr.write(line)
+        # Start the threads for piping text to proc.stdin and from proc.stderr
+        # (they'll block until there's something to do), yield the proc object,
+        # and then handle cleanup once back here.
+        pipe_threads = [
+            threading.Thread(target=stdin_writer),
+            threading.Thread(target=stderr_reader)]
+        for thread in pipe_threads:
+            thread.start()
         yield proc
+        for thread in pipe_threads:
+            thread.join()
+        proc.wait()
+        if proc.returncode:
+            LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
+            raise util.IgSeqError("IgBLAST crashed")
+
 
 @contextmanager
 def setup_db_dir(vdj_ref_paths, db_path=None):
     """Set up a directory with database files for igblast.
 
-    Run as a context manager; this will yield the path to the prepared
-    directory with V, D, and J databases and the auxiliary data file, and will
-    automatically handle cleanup if a temporary directory is used (the
-    default).  If a db_path is given the files will not be removed afterward.
-
     vdj_ref_paths: list of V/D/J FASTA files to gather into the db dir.
     db_path: custom path for database output (default: temporary directory)
+
+    Run as a context manager; this will yield a tuple with info about the
+    prepared database files, and will automatically handle cleanup if a
+    temporary directory is used (the default).  If a db_path is given the files
+    will not be removed afterward.
+
+    The tuple yielded contains the path to the prepared directory with V, D,
+    and J databases and the auxiliary data file, and a list of dictionaries
+    with information about the V/D/J sequences included in the databases.
     """
     with TemporaryDirectory() as tmp:
         if db_path:

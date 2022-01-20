@@ -16,6 +16,15 @@ class TestVDJMatchLive(TestBase, TestLive):
             stdout_exp = f_in.read()
         self.assertEqual(stdout_exp, stdout)
 
+    def test_vdj_match_csv(self):
+        # CSV input should be supported
+        stdout, stderr = self.redirect_streams(
+            lambda: vdj_match.vdj_match(["rhesus/imgt"], self.path/"input/query.csv"))
+        self.assertEqual(stderr, "")
+        with open(self.path/"output/stdout.txt") as f_in:
+            stdout_exp = f_in.read()
+        self.assertEqual(stdout_exp, stdout)
+
     def test_vdj_match_outfile(self):
         # with an output filename, it will write CSV there, and won't print the
         # table

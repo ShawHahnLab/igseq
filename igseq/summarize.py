@@ -1,5 +1,8 @@
 """
 Make a summary table of antibody attributes via IgBLAST.
+
+The query can be in any file format supported by the convert command and can be
+given as "-" for standard input.
 """
 
 import logging
@@ -12,12 +15,15 @@ from . import vdj
 
 LOGGER = logging.getLogger(__name__)
 
-def summarize(ref_paths, query, output=None, showtxt=None, species=None, dry_run=False, threads=1):
+def summarize(ref_paths, query, output=None, showtxt=None, species=None, fmt_in=None, colmap=None, dry_run=False, threads=1):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query)
     LOGGER.info("given output: %s", output)
     LOGGER.info("given showtxt: %s", showtxt)
     LOGGER.info("given species: %s", species)
+    LOGGER.info("given input format: %s", fmt_in)
+    LOGGER.info("given colmap: %s", colmap)
+    LOGGER.info("given threads: %s", threads)
     # if not specified, show text when not saving output
     if showtxt is None:
         showtxt = not output
@@ -36,8 +42,7 @@ def summarize(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         results = []
         with igblast.setup_db_dir(
             [attrs["path"] for attrs in attrs_list]) as (db_dir, attrs_list_seq):
-            with igblast.run_igblast(
-                db_dir, organism, query, threads=threads, extra_args=["-outfmt", "19"]) as proc:
+            with igblast.run_igblast(db_dir, organism, query, threads, fmt_in, colmap, extra_args=["-outfmt", "19"]) as proc:
                 reader = DictReader(proc.stdout, delimiter="\t")
                 lengthmap = {}
                 for attrs in attrs_list_seq:
