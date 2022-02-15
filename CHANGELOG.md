@@ -1,6 +1,6 @@
 # Changelog
 
-## dev
+## 0.2.0 - 2022-02-15
 
 ### Added
 
