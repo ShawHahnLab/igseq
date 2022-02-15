@@ -2,13 +2,13 @@
 Find closest-matching VDJ sequences from one or more references.
 
 This uses IgBLAST to assign germline genes, but with a separate query for each
-reference specified as a separate database.
+reference specified as a separate database.  The query can be in any file
+format supported by the convert command and can be given as "-" for standard
+input.
 """
 
 import logging
-import subprocess
 from csv import DictReader, DictWriter
-from io import StringIO
 from pathlib import Path
 from . import util
 from . import igblast
@@ -17,12 +17,15 @@ from . import vdj
 
 LOGGER = logging.getLogger(__name__)
 
-def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run=False, threads=1):
+def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, fmt_in=None, colmap=None, dry_run=False, threads=1):
     LOGGER.info("given ref path(s): %s", ref_paths)
     LOGGER.info("given query path: %s", query)
     LOGGER.info("given output: %s", output)
     LOGGER.info("given showtxt: %s", showtxt)
     LOGGER.info("given species: %s", species)
+    LOGGER.info("given input format: %s", fmt_in)
+    LOGGER.info("given colmap: %s", colmap)
+    LOGGER.info("given threads: %s", threads)
     # if not specified, show text when not saving output
     if showtxt is None:
         showtxt = not output
@@ -49,25 +52,25 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, dry_run
         results = []
         for key, trio in vdj_files_grouped.items():
             paths = [attrs["path"] for attrs in trio["V"] + trio["D"] + trio["J"]]
-            proc, _ = igblast.setup_db_dir_and_igblast(
-                paths, organism, query, threads=threads, extra_args=["-outfmt", "19"],
-                stdout=subprocess.PIPE, text=True, check=True)
-            reader = DictReader(StringIO(proc.stdout), delimiter="\t")
-            for row in reader:
-                for segment in ["v", "d", "j"]:
-                    try:
-                        start = int(row[f"{segment}_sequence_start"])
-                        stop = int(row[f"{segment}_sequence_end"])
-                        length = stop - start + 1
-                    except ValueError:
-                        length = ""
-                    results.append({
-                        "query": row["sequence_id"],
-                        "reference": key,
-                        "segment": segment.upper(),
-                        "call": row[f"{segment}_call"],
-                        "length": length,
-                        "identity": row[f"{segment}_identity"]})
+            with igblast.setup_db_dir(paths) as (db_dir, _):
+                with igblast.run_igblast(db_dir, organism, query, threads,
+                        fmt_in, colmap, extra_args=["-outfmt", "19"]) as proc:
+                    reader = DictReader(proc.stdout, delimiter="\t")
+                    for row in reader:
+                        for segment in ["v", "d", "j"]:
+                            try:
+                                start = int(row[f"{segment}_sequence_start"])
+                                stop = int(row[f"{segment}_sequence_end"])
+                                length = stop - start + 1
+                            except ValueError:
+                                length = ""
+                            results.append({
+                                "query": row["sequence_id"],
+                                "reference": key,
+                                "segment": segment.upper(),
+                                "call": row[f"{segment}_call"],
+                                "length": length,
+                                "identity": row[f"{segment}_identity"]})
         results = sorted(results, key=lambda r: (r["query"], r["reference"]))
         if showtxt:
             show.show_grid(results)

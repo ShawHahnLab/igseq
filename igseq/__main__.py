@@ -16,7 +16,7 @@ from . import igblast
 from . import summarize
 from . import vdj_gather
 from . import vdj_match
-from . import tab2seq
+from . import convert
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -37,6 +37,22 @@ def rewrap(txt):
     #wrap = lambda txt: "\n".join(textwrap.wrap(txt, width=width))
     chunks = txt.strip().split("\n\n")
     return "\n\n".join([wrap(chunk) for chunk in chunks])
+
+def args_to_colmap(args):
+    """Make dictionary of column name mappings from cmd-line arguments.
+
+    This is used for commands that work with tabular inputs/outputs.
+    """
+    # convert arguments like "col_seq_id" to "sequence_id"
+    colmap = {}
+    longer = {"desc": "description", "seq": "sequence", "qual": "quality"}
+    for key, val in vars(args).items():
+        if key.startswith("col") and val is not None:
+            key_long = key.split("_")[1:]
+            key_long = [longer.get(word, word) for word in key_long]
+            key_long = "_".join(key_long)
+            colmap[key_long] = val
+    return colmap
 
 def main(arglist=None):
     """Command-line interface.
@@ -138,22 +154,28 @@ def _main_list(args):
     show.list_files(text_items=args.text)
 
 def _main_igblast(args, extra_igblastn_args=None):
+    colmap = args_to_colmap(args)
     igblast.igblast(
         query_path=args.query,
         ref_paths=args.reference,
         db_path=args.database,
         species=args.species,
+        fmt_in=args.input_format,
+        colmap=colmap,
         extra_args=extra_igblastn_args,
         dry_run=args.dry_run,
         threads=args.threads)
 
 def _main_summarize(args):
+    colmap = args_to_colmap(args)
     summarize.summarize(
         ref_paths=args.reference,
         query=args.query,
         output=args.output,
         showtxt=args.show,
         species=args.species,
+        fmt_in=args.input_format,
+        colmap=colmap,
         dry_run=args.dry_run)
 
 def _main_vdj_gather(args):
@@ -163,24 +185,27 @@ def _main_vdj_gather(args):
         dry_run=args.dry_run)
 
 def _main_vdj_match(args):
+    colmap = args_to_colmap(args)
     vdj_match.vdj_match(
         ref_paths=args.reference,
         query=args.query,
         output=args.output,
         showtxt=args.show,
         species=args.species,
+        fmt_in=args.input_format,
+        colmap=colmap,
         dry_run=args.dry_run)
 
-def _main_tab2seq(args):
-    tab2seq.tab2seq(
-        tab_path_in=args.input,
-        seq_path_out=args.output,
-        seq_col=args.seq_col,
-        seq_id_col=args.seq_id_col,
-        seq_desc_col=args.seq_desc_col,
-        qual_col=args.seq_qual_col,
-        tab_fmt=args.tab_fmt,
-        seq_fmt=args.seq_fmt)
+def _main_convert(args):
+    colmap = args_to_colmap(args)
+    convert.convert(
+        path_in=args.input,
+        path_out=args.output,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        colmap=colmap,
+        dummyqual=args.dummy_qual,
+        dry_run=args.dry_run)
 
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
@@ -240,9 +265,9 @@ def __setup_arg_parser():
         help="Find closest-matching germline VDJ sequences",
         description=rewrap(vdj_match.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    p_tab2seq = subps.add_parser("tab2seq",
-        help="Convert CSV/TSV to FASTA/FASTQ",
-        description=rewrap(tab2seq.__doc__),
+    p_convert = subps.add_parser("convert",
+        help="Convert FASTA/FASTQ/CSV/TSV",
+        description=rewrap(convert.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -347,13 +372,20 @@ def __setup_arg_parser():
 
     __add_common_args(p_igblast)
     p_igblast.add_argument("-Q", "--query", required=True,
-        help="query FASTA")
+        help="query input")
     p_igblast.add_argument("-r", "--reference", nargs="+",
             help="one or more FASTA/directory/builtin names pointing to V/D/J FASTA files")
     p_igblast.add_argument("-d", "--database",
             help="optional persistent database directory name (default: use temp directory)")
     p_igblast.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_igblast.add_argument("--input-format",
+        help="format of query input "
+        "(default: detect from input filename if possible)")
+    p_igblast.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular query input)")
+    p_igblast.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular query input)")
     p_igblast.add_argument("-t", "--threads", type=int, default=1,
         help="number of threads for parallel processing (default: 1)")
     p_igblast.set_defaults(func=_main_igblast)
@@ -365,6 +397,13 @@ def __setup_arg_parser():
         help="query FASTA")
     p_summarize.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_summarize.add_argument("--input-format",
+        help="format of query input "
+        "(default: detect from input filename if possible)")
+    p_summarize.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular query input)")
+    p_summarize.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular query input)")
     p_summarize.add_argument("-o", "--output",
         help="Output filename")
     p_summarize.add_argument("--show", action=argparse.BooleanOptionalAction,
@@ -386,6 +425,13 @@ def __setup_arg_parser():
         help="query FASTA")
     p_vdj_match.add_argument("-S", "--species",
             help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_vdj_match.add_argument("--input-format",
+        help="format of query input "
+        "(default: detect from input filename if possible)")
+    p_vdj_match.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular query input)")
+    p_vdj_match.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular query input)")
     p_vdj_match.add_argument("-o", "--output",
         help="Output filename")
     p_vdj_match.add_argument("--show", action=argparse.BooleanOptionalAction,
@@ -393,27 +439,29 @@ def __setup_arg_parser():
         "(default: disabled if using file output, enabled otherwise)")
     p_vdj_match.set_defaults(func=_main_vdj_match)
 
-    __add_common_args(p_tab2seq)
-    p_tab2seq.add_argument("input",
-        help="one CSV or TSV file path, or a literal '-' for standard input")
-    p_tab2seq.add_argument("output",
-        help="one FASTA or FASTQ file path, or a literal '-' for standard output")
-    p_tab2seq.add_argument("--seq-col", required=True,
-        help="name of table column containing sequences")
-    p_tab2seq.add_argument("--seq-id-col", required=True,
-        help="name of table column containing sequence IDs")
-    p_tab2seq.add_argument("--seq-desc-col",
-        help="name of table column containing sequence descriptions (optional)")
-    p_tab2seq.add_argument("--seq-qual-col",
-        help="name of table column containing sequence quality "
-        "scores as PHRED+33 (for FASTQ output only)")
-    p_tab2seq.add_argument("--tab-fmt",
-            help="Format of input: tsv or csv.  "
-            "default is detected from input filename if possible")
-    p_tab2seq.add_argument("--seq-fmt",
-            help="Format of output: fasta or fastq.  "
-            "default is detected from output filename if possible")
-    p_tab2seq.set_defaults(func=_main_tab2seq)
+    __add_common_args(p_convert)
+    p_convert.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_convert.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_convert.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_convert.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_convert.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_convert.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_convert.add_argument("--col-seq-qual",
+        help="Name of column containing sequence qualities (for tabular input/output)")
+    p_convert.add_argument("--col-seq-desc",
+        help="Name of column containing sequence descriptions (for tabular input/output)")
+    p_convert.add_argument("-d", "--dummy-qual",
+        help="Quality score to use for all bases for applicable output types, "
+        'as text (e.g. use "I" for 40)')
+    p_convert.set_defaults(func=_main_convert)
 
     return parser
 

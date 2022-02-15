@@ -238,11 +238,27 @@ def _make_seqid_suffix_lut(attrs_list):
 def parse_vdj_id(seqid):
     """Parse a "standard" V/D/J segment gene/allele ID into a dictionary."""
     seqid = str(seqid)
-    # IGHV1-NL_1*01_S2052
+    # e.g. IGHV1-NL_1*01_S2052
     match = re.search(
-        r"(IG[HKL][VDJ][0-9])(-?[A-Za-z0-9_]*-?[A-Za-z0-9]*)\*?([0-9]*_?S?[0-9]*)", seqid)
+        r"(IG[HKL][VDJ][0-9])(-?[A-Za-z0-9_]*-?[A-Za-z0-9]*)\*?([0-9]*_?S?[0-9abcd]*)", seqid)
     if not match:
-        raise ValueError("Seq ID not recognized: %s" % seqid)
+        # e.g. VH3.9B*01c
+        match = re.search(r"([VJ]H[0-9]+)(\.[A-Z0-9]+)\*([0-9]{2}[abcd]*)", seqid)
+        if not match:
+            raise ValueError(f"Seq ID not recognized: {seqid}")
+        prefix = seqid[0:match.start()]
+        suffix = seqid[match.end():]
+        family = re.sub("JH", "IGHJ", re.sub("VH", "IGHV", match.group(1)))
+        attrs = {
+            "seqid": seqid,
+            "prefix": prefix,
+            "suffix": suffix,
+            "allele": match.group(0) if match.group(3) else "",
+            "gene": match.group(1) + match.group(2),
+            "family": family,
+            "segment": family[:4],
+            "locus": family[:3]}
+        return attrs
     prefix = seqid[0:match.start()]
     suffix = seqid[match.end():]
     attrs = {
