@@ -16,6 +16,19 @@ class TestVDJMatchLive(TestBase, TestLive):
             stdout_exp = f_in.read()
         self.assertEqual(stdout_exp, stdout)
 
+    def test_vdj_match_multi(self):
+        # with all matching rhesus refs selected, we should get a block of
+        # output rows for each ref found.  but, the zhang2019 ref only has V
+        # and J so it's not usable as a standalone IgBLAST DB.  We'll get a
+        # warning about skipping that one, and output rows for imgt/
+        # sonarramesh/bernat2021.
+        stdout, stderr = self.redirect_streams(
+            lambda: vdj_match.vdj_match(["rhesus"], self.path/"input/query.fasta"))
+        self.assertEqual(stderr, 'No FASTA for D from rhesus/zhang2019; skipping\n')
+        with open(self.path/"output/stdout_multi.txt") as f_in:
+            stdout_exp = f_in.read()
+        self.assertEqual(stdout_exp, stdout)
+
     def test_vdj_match_csv(self):
         # CSV input should be supported
         stdout, stderr = self.redirect_streams(
