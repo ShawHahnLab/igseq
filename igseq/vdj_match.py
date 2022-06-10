@@ -36,17 +36,34 @@ def vdj_match(ref_paths, query, output=None, showtxt=None, species=None, fmt_in=
     species_det = {s for s in species_det if s}
     organism = igblast.detect_organism(species_det, species)
 
-    vdj_files_grouped = vdj.group(
-        attrs_list,
-        lambda x: f"{x['species']}/{x['ref']}" if x["type"] == "internal" else x["input"])
+    # Group references into sets with V/D/J.  If a segment is missing (note
+    # that D is always needed by igblast even for light chain) we'll remove the
+    # whole reference with a warning *if* it was found internally from a
+    # partial text match, but will fail outright if it was selected explicitly
+    # or supplied from external files.
+    def groupkey(row):
+        return(f"{row['species']}/{row['ref']}" if row["type"] == "internal" else row["input"])
+    vdj_files_grouped = vdj.group(attrs_list, groupkey)
+    # This is sloppy because it'll just take whichever is the last matching row
+    # (with its segment-specific stuff included) but i'll do for now
+    orig_attrs = {groupkey(row): row for row in attrs_list}
+    skips = set()
     for key, trio in vdj_files_grouped.items():
         LOGGER.info("detected V FASTA from %s: %d", key, len(trio["V"]))
         LOGGER.info("detected D FASTA from %s: %d", key, len(trio["D"]))
         LOGGER.info("detected J FASTA from %s: %d", key, len(trio["J"]))
         for segment, attrs_group in trio.items():
-            if not attrs_group:
-                LOGGER.critical("No FASTA for %s from %s", segment, key)
-                raise util.IgSeqError("Missing VDJ input for database")
+            if key not in skips and not attrs_group:
+                # Only case where we'll just warn and continue is: it's an
+                # internal ref, and it was found implicitly (not by name).
+                if orig_attrs[key]["type"] == "internal" and orig_attrs[key]["input"] != key:
+                    LOGGER.warning("No FASTA for %s from %s; skipping", segment, key)
+                    skips.add(key)
+                else:
+                    LOGGER.critical("No FASTA for %s from %s", segment, key)
+                    raise util.IgSeqError("Missing VDJ input for database")
+    for key in skips:
+        del vdj_files_grouped[key]
 
     if not dry_run:
         results = []
