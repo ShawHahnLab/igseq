@@ -1,6 +1,7 @@
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from igseq import record
+from igseq.util import IgSeqError
 from .util import TestBase
 
 class TestRecordHandler(TestBase):
@@ -16,6 +17,18 @@ class TestRecordHandler(TestBase):
     def test_infer_fmt(self):
         self.assertEqual(self.handler.fmt, "fa")
         fmt = self.handler.infer_fmt("fq")
+
+    def test_all_types(self):
+        # The files don't get opened so they don't have to actually exist here
+        ext_fmts = {"tab": "tsv", "fasta": "fa", "afa": "fa", "fastq": "fq"}
+        for ext in ["csv", "tsv", "tab", "fa", "fasta", "afa", "fastq", "fq", "fastq"]:
+            handler = record.RecordHandler(self.path/f"example.{ext}")
+            self.assertEqual(handler.fmt, ext_fmts.get(ext, ext))
+        # unrecognized format is handled and can be specified manually
+        with self.assertRaises(IgSeqError):
+            record.RecordHandler(self.path/"example.xyz")
+        handler = record.RecordHandler(self.path/"example.xyz", "fa")
+        self.assertEqual(handler.fmt, "fa")
 
     def test_encode_record(self):
         obj = self.handler.encode_record({"sequence_id": "id", "sequence": "ACTG"})

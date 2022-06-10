@@ -17,6 +17,25 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_DUMMY_QUAL = "I"
 DEFAULT_COLUMNS = {k: k for k in ["sequence_id", "sequence", "sequence_quality", "sequence_description"]}
 
+# Mapping from file extensions to file format names used here
+FMT_EXT_MAP = {
+    ".csv": "csv",
+    ".tsv": "tsv",
+    ".tab": "tsv",
+    ".fa": "fa",
+    ".fasta": "fa",
+    ".afa": "fa",
+    ".fq": "fq",
+    ".fastq": "fq"}
+
+# Mapping from file format names to functions that take file handles and give
+# format-specific record iterators.
+READERS = {
+    "csv": lambda hndl: csv.DictReader(hndl),
+    "tsv": lambda hndl: csv.DictReader(hndl, delimiter="\t"),
+    "fa": lambda hndl: SeqIO.parse(hndl, "fasta"),
+    "fq": lambda hndl: SeqIO.parse(hndl, "fastq")}
+
 class RecordHandler:
     """Abstract class for shared generic record reading and writing
     functionality.  This behaves as a context manager to handle file opening
@@ -63,28 +82,7 @@ class RecordHandler:
 
     def infer_fmt(self, fmt=None):
         """Guess file format from our path, with optional default."""
-        try:
-            path = Path(self.pathlike)
-        except TypeError:
-            path = Path(str(self.pathlike.name))
-        fmt_inferred = None
-        if path.suffix.lower() in [".csv"]:
-            fmt_inferred = "csv"
-        elif path.suffix.lower() in [".tsv", ".tab"]:
-            fmt_inferred = "tsv"
-        elif path.suffix.lower() in [".fa", ".fasta"]:
-            fmt_inferred = "fa"
-        elif path.suffix.lower() in [".fq", ".fastq"]:
-            fmt_inferred = "fq"
-        elif path.suffix.lower() == ".gz":
-            if Path(path.stem).suffix.lower() in [".fa", ".fasta"]:
-                fmt_inferred = "fagz"
-            elif Path(path.stem).suffix.lower() in [".fq", ".fastq"]:
-                fmt_inferred = "fqgz"
-            elif Path(path.stem).suffix.lower() in [".csv"]:
-                fmt_inferred = "csvgz"
-            elif Path(path.stem).suffix.lower() in [".tsv", ".tab"]:
-                fmt_inferred = "tsvgz"
+        fmt_inferred = self._infer_fmt(self.pathlike)
         LOGGER.info("given format: %s", fmt)
         LOGGER.info("inferred format: %s", fmt_inferred)
         if not fmt:
@@ -94,6 +92,20 @@ class RecordHandler:
                     "specify a format manually.")
             fmt = fmt_inferred
         return fmt
+
+    @staticmethod
+    def _infer_fmt(path):
+        try:
+            path = Path(path)
+        except TypeError:
+            path = Path(str(path.name))
+        ext = path.suffix.lower()
+        ext2 = Path(path.stem).suffix.lower()
+        fmt2 = FMT_EXT_MAP.get(ext2)
+        if ext == ".gz" and fmt2:
+            return fmt2 + "gz"
+        else:
+            return FMT_EXT_MAP.get(ext)
 
     def encode_record(self, record):
         """Convert record dictionary into a SeqRecord object."""
@@ -160,14 +172,7 @@ class RecordReader(RecordHandler):
             else:
                 LOGGER.info("reading from text")
                 self.handle = open(self.pathlike, "rt", encoding="ascii")
-        if self.fmt in ["csv", "csvgz"]:
-            self.reader = csv.DictReader(self.handle)
-        elif self.fmt in ["tsv", "tsvgz"]:
-            self.reader = csv.DictReader(self.handle, delimiter="\t")
-        elif self.fmt in ["fa", "fagz"]:
-            self.reader = SeqIO.parse(self.handle, "fasta")
-        elif self.fmt in ["fq", "fqgz"]:
-            self.reader = SeqIO.parse(self.handle, "fastq")
+        self.reader = READERS[self.fmt.removesuffix("gz")](self.handle)
 
     def  __iter__(self):
         return self
