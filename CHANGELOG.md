@@ -1,5 +1,14 @@
 # Changelog
 
+## dev
+
+### Fixed
+
+ * vdj-match now skips references that are missing gene segments but were only
+   included implicitly rather than directly named ([#25])
+
+[#25]: https://github.com/ShawHahnLab/igseq/pull/25
+
 ## 0.2.0 - 2022-02-15
 
 ### Added
