@@ -2,11 +2,17 @@
 
 ## dev
 
+### Added
+
+ * Support for .afa (as FASTA) and .fq (as FASTQ) in input/output handling
+   ([#26])
+
 ### Fixed
 
  * vdj-match now skips references that are missing gene segments but were only
    included implicitly rather than directly named ([#25])
 
+[#26]: https://github.com/ShawHahnLab/igseq/pull/26
 [#25]: https://github.com/ShawHahnLab/igseq/pull/25
 
 ## 0.2.0 - 2022-02-15
