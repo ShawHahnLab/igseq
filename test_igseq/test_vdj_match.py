@@ -29,6 +29,16 @@ class TestVDJMatchLive(TestBase, TestLive):
             stdout_exp = f_in.read()
         self.assertEqual(stdout_exp, stdout)
 
+    def test_vdj_match_missing(self):
+        # If we explicitly request a reference that's missing segments, though,
+        # that warning becomes an error.
+        def wrapper():
+            with self.assertRaisesRegex(IgSeqError, "Missing VDJ input for database"):
+                vdj_match.vdj_match(["rhesus/zhang2019"], self.path/"input/query.fasta")
+        stdout, stderr = self.redirect_streams(wrapper)
+        self.assertEqual(stdout, "")
+        self.assertEqual(stderr, 'No FASTA for D from rhesus/zhang2019\n')
+
     def test_vdj_match_csv(self):
         # CSV input should be supported
         stdout, stderr = self.redirect_streams(
