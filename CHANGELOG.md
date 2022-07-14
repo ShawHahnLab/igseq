@@ -1,6 +1,6 @@
 # Changelog
 
-## dev
+## 0.3.0 - 2022-07-14
 
 ### Added
 
