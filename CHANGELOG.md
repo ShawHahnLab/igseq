@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 - 2022-07-14
+
+### Added
+
+ * Support for .afa (as FASTA) and .fq (as FASTQ) in input/output handling
+   ([#26])
+
+### Changed
+
+ * Replaced Rhesus germline reference "bernat2021" with "kimdb" version 1.1,
+   containing additions and corrections since the original publication, and
+   added a CSV of germline reference information ([#28])
+
+### Fixed
+
+ * vdj-match now skips references that are missing gene segments but were only
+   included implicitly rather than directly named ([#25])
+
+[#28]: https://github.com/ShawHahnLab/igseq/pull/28
+[#26]: https://github.com/ShawHahnLab/igseq/pull/26
+[#25]: https://github.com/ShawHahnLab/igseq/pull/25
+
 ## 0.2.0 - 2022-02-15
 
 ### Added
