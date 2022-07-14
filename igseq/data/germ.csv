@@ -1,0 +1,6 @@
+Ref,DOI,URL,Notes
+rhesus/zhang2019,10.4049/jimmunol.1800342,https://doi.org/10.4049/jimmunol.1800342,IGHV and IGHJ only
+rhesus/kimdb,10.1016/j.immuni.2020.12.018,http://kimdb.gkhlab.se/datasets,IGH only; KIMDB v1.1 (updated since publication)
+rhesus/sonarramesh,10.3389/fimmu.2017.01407,https://github.com/scharch/SONAR/tree/master/germDB,Trimmed subset of full published sequences
+rhesus/imgt,,https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Macaca_mulatta/IG,
+human/imgt,,https://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Homo_sapiens/IG,
