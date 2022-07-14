@@ -164,43 +164,51 @@ def run_igblast(
         # is handle proc.stdout.  When that block returns, we'll handle the
         # cleanup here.
         def stdin_writer():
-            # read whatever format from the query file, write FASTA to the
-            # igblastn proc's stdin
             try:
+                # read whatever format from the query file, write FASTA to the
+                # igblastn proc's stdin
                 with RecordReader(query_path, fmt_in, colmap) as reader, \
                     RecordWriter(proc.stdin, "fa", colmap) as writer:
                     for rec in reader:
                         writer.write(rec)
+            except BrokenPipeError:
+                pass
             # whatever else happens here, try to close the process' stdin, so
-            # we don't leave things hanging.  A ValueError is raised if the
-            # pipe is already closed, but if that's not the case, re-raise that
-            # exception if it occurs.
+            # we don't leave things hanging.
             finally:
                 try:
                     proc.stdin.close()
-                except ValueError:
-                    if not proc.stdin.closed:
-                        raise
+                except BrokenPipeError:
+                    pass
         def stderr_reader():
             # all this does is catch stderr line-by-line and write it to our
             # stderr.  this way it can be captured by contextlib.redirect_stderr.
-            # The warning in the contextlib docs about thatbeing "not suitable
+            # The warning in the contextlib docs about that being "not suitable
             # for use in library code and most threaded applications"
             # notwithstanding, it does seem to work here.
-            for line in proc.stderr:
-                sys.stderr.write(line)
+            try:
+                for line in proc.stderr:
+                    sys.stderr.write(line)
+            except BrokenPipeError:
+                pass
         # Start the threads for piping text to proc.stdin and from proc.stderr
         # (they'll block until there's something to do), yield the proc object,
         # and then handle cleanup once back here.
         pipe_threads = [
-            threading.Thread(target=stdin_writer),
-            threading.Thread(target=stderr_reader)]
+            threading.Thread(target=stdin_writer, name="stdin"),
+            threading.Thread(target=stderr_reader, name="stderr")]
         for thread in pipe_threads:
             thread.start()
-        yield proc
-        for thread in pipe_threads:
-            thread.join()
-        proc.wait()
+        try:
+            yield proc
+        # Whatever happens inside the yield, always clean up the process and
+        # its pipes.
+        finally:
+            if proc.returncode is None:
+                proc.terminate()
+            for thread in pipe_threads:
+                thread.join()
+            proc.wait()
         if proc.returncode:
             LOGGER.critical("%s exited with code %d", proc.args[0], proc.returncode)
             raise util.IgSeqError("IgBLAST crashed")
