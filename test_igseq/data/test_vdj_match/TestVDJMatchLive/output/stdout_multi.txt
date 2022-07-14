@@ -1,10 +1,10 @@
  query          reference segment                    call length identity
- query  rhesus/bernat2021       V            IGHV4-117*01    296   99.324
- query  rhesus/bernat2021       D             IGHD4-23*01      9  100.000
- query  rhesus/bernat2021       J              IGHJ4-3*01     45  100.000
  query        rhesus/imgt       V            IGHV4-173*01    296   99.324
  query        rhesus/imgt       D IGHD4-23*01,IGHD4-41*01      9  100.000
  query        rhesus/imgt       J                IGHJ4*01     45  100.000
+ query       rhesus/kimdb       V            IGHV4-117*01    296   99.324
+ query       rhesus/kimdb       D             IGHD4-23*01      9  100.000
+ query       rhesus/kimdb       J              IGHJ4-3*01     45  100.000
  query rhesus/sonarramesh       V            IGHV4-AFI*01    294   95.960
  query rhesus/sonarramesh       D IGHD4-22*01,IGHD4-37*01      9  100.000
  query rhesus/sonarramesh       J                IGHJ4*01     45  100.000
