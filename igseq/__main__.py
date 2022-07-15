@@ -2,6 +2,7 @@
 Utilities for common IgSeq tasks.
 """
 
+import os
 import sys
 import argparse
 import logging
@@ -72,22 +73,42 @@ def main(arglist=None):
         prefix = "[DRYRUN] "
     _setup_log(args.verbose, args.quiet, prefix)
     try:
-        if args_extra:
-            # If there were unparsed arguments, see if we're in one of the
-            # commands (currently just igblast) that can take extra
-            # pass-through arguments.  If so pass them along, but if not, error
-            # out.
-            if args.func in [_main_igblast]:
-                args.func(args, args_extra)
+        try:
+            if args_extra:
+                # If there were unparsed arguments, see if we're in one of the
+                # commands (currently just igblast) that can take extra
+                # pass-through arguments.  If so pass them along, but if not,
+                # error out.
+                if args.func in [_main_igblast]:
+                    args.func(args, args_extra)
+                else:
+                    parser.parse_args(args_extra)
             else:
-                parser.parse_args(args_extra)
-        else:
-            args.func(args)
-    except IgSeqError as err:
-        sys.stderr.write(
-            f"\nigseq failed because: {err.message}\n"
-            "Considering adding -v or -vv to the command if the problem isn't clear.\n")
-        sys.exit(1)
+                args.func(args)
+        except IgSeqError as err:
+            sys.stderr.write(
+                f"\nigseq failed because: {err.message}\n"
+                "Considering adding -v or -vv to the command if the problem isn't clear.\n")
+            sys.exit(1)
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except BrokenPipeError:
+        # If stdout and/or stderr were writing to a pipe and that pipe is now
+        # closed, we'll swap in /dev/null for whichever it is to handle this
+        # quietly and to prevent it from arising again when Python tries to
+        # flush file handles on exit.
+        # Adapted from
+        # https://stackoverflow.com/questions/26692284
+        # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        try:
+            sys.stdout.flush()
+        except BrokenPipeError:
+            os.dup2(devnull, sys.stdout.fileno())
+        try:
+            sys.stderr.flush()
+        except BrokenPipeError:
+            os.dup2(devnull, sys.stderr.fileno())
 
 def _main_getreads(args):
     if args.no_counts:
