@@ -29,7 +29,7 @@ class TestIdentity(TestBase):
                 self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
 
     def test_identity_stdin(self):
-        """Test reading input to stdout."""
+        """Test reading input from stdin."""
         # assume FASTA for this case?  Or require format?
         self.skipTest("not yet implemented")
 
