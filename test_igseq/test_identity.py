@@ -28,10 +28,13 @@ class TestIdentity(TestBase):
                     colmap={"sequence": "sequence2"})
                 self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
 
-    def test_identity_stdin(self):
-        """Test reading input from stdin."""
-        # assume FASTA for this case?  Or require format?
-        self.skipTest("not yet implemented")
+    def test_identity_aa(self):
+        """Test using amino acid sequences."""
+        with TemporaryDirectory() as tmpdir:
+            identity(
+                self.path/"input_query_aa.fasta",
+                Path(tmpdir)/"output_aa.csv",
+                self.path/"input_ref_aa.fasta")
 
     def test_identity_stdout(self):
         """Test writing output to stdout."""
@@ -128,17 +131,22 @@ class TestScoreIdentity(unittest.TestCase):
     def test_score_identity(self):
         """Test that pairs of input sequences each produce the appropriate score."""
         # Bio.Align.PairwiseAligner as used in the implementation will match
-        # IUPAC codes in a simple way, just literally.  So that means N matches
-        # only N rather than any nucleotide, and so on.
+        # characters (such as those that might represent IUPAC codes) in a
+        # simple way, just literally.  So that means N matches only N rather
+        # than any nucleotide, and so on.  (Makse sense, considering that's the
+        # only sane way it could handle arbitrary sequence types (NT or AA)
+        # without also needing a lot of extra metadata tracking.)
         cases = [
             ("ACTG", "ACTG", 1.00), # identical
             ("ACTG",     "", 0.00), # one blank -> 0 by definition
             (    "", "ACTG", 0.00), # other blank -> 0 by definition
             (    "",     "", 0.00), # both blank -> 0 by definition
             ("ACTG", "ACTA", 0.75), # one mismatch
-            ("ACTG", "ACTN", 0.75), # one mismatch, IUPAC
-            ("ACTN", "ACTN", 1.00), # identical with IUPAC
-            ("ACTR", "ACTR", 1.00), # identical with IUPAC
+            ("ACTG", "ACTN", 0.75), # one mismatch, IUPAC if NT
+            ("ACTN", "ACTN", 1.00), # identical with IUPAC if NT
+            ("ACTR", "ACTR", 1.00), # identical with IUPAC if NT
+            ("ACDE", "ACDE", 1.00), # or are these AA?  that works too.
+            ("ACDE", "ACDP", 0.75), # one mismatch, AA
             ]
         for case in cases:
             with self.subTest(pair=case[0:2]):
