@@ -13,6 +13,7 @@ include exact matches only.
     igseq show primers        show igseq's primers.csv with nice formatting
     igseq show IGHV.fasta     show all builtin IGHV FASTAs concatenated
     igseq show some/file.csv  show an arbitrary CSV file
+    igseq show some/abs.tree  show an arbitrary Newick tree file (topology only)
 """
 
 import os
