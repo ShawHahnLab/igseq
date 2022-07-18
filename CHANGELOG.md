@@ -11,9 +11,11 @@
 
 ### Fixed
 
+ * Uppercase file extensions are now supported by the `show` command ([#35])
  * broken pipes (such as from `igseq something | something else`) are now
    handled gracefully ([#30])
 
+[#35]: https://github.com/ShawHahnLab/igseq/pull/35
 [#33]: https://github.com/ShawHahnLab/igseq/pull/33
 [#31]: https://github.com/ShawHahnLab/igseq/pull/31
 [#30]: https://github.com/ShawHahnLab/igseq/pull/30
