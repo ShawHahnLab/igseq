@@ -13,7 +13,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ShawHahnLab/igseq",
     install_requires=[
-        "biopython>=1.79"
+        "biopython>=1.79",
+        "newick>=1.3.2"
         ],
     python_requires='>=3.9',
     packages=setuptools.find_packages(exclude=["test_*"]),
