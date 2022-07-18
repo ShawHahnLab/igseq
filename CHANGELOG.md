@@ -2,11 +2,17 @@
 
 ## dev
 
+### Added
+
+ * `identity` command for calculating pairwise identity between arbitrary
+   queries and references ([#31])
+
 ### Fixed
 
  * broken pipes (such as from `igseq something | something else`) are now
    handled gracefully ([#30])
 
+[#31]: https://github.com/ShawHahnLab/igseq/pull/31
 [#30]: https://github.com/ShawHahnLab/igseq/pull/30
 
 ## 0.3.0 - 2022-07-14
