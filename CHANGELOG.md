@@ -6,12 +6,15 @@
 
  * `identity` command for calculating pairwise identity between arbitrary
    queries and references ([#31])
+ * Support for showing basic tree topology for Newick-format files in `show`
+   command ([#33])
 
 ### Fixed
 
  * broken pipes (such as from `igseq something | something else`) are now
    handled gracefully ([#30])
 
+[#33]: https://github.com/ShawHahnLab/igseq/pull/33
 [#31]: https://github.com/ShawHahnLab/igseq/pull/31
 [#30]: https://github.com/ShawHahnLab/igseq/pull/30
 
