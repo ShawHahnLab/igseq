@@ -18,6 +18,7 @@ from . import summarize
 from . import vdj_gather
 from . import vdj_match
 from . import convert
+from . import identity
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -228,6 +229,17 @@ def _main_convert(args):
         dummyqual=args.dummy_qual,
         dry_run=args.dry_run)
 
+def _main_identity(args):
+    colmap = args_to_colmap(args)
+    identity.identity(
+        path_in=args.input,
+        path_out=args.output,
+        path_ref=args.reference,
+        fmt_in=args.input_format,
+        fmt_in_ref=args.ref_format,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -289,6 +301,10 @@ def __setup_arg_parser():
     p_convert = subps.add_parser("convert",
         help="Convert FASTA/FASTQ/CSV/TSV",
         description=rewrap(convert.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_identity = subps.add_parser("identity",
+        help="Calculate pairwise identities",
+        description=rewrap(identity.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -483,6 +499,25 @@ def __setup_arg_parser():
         help="Quality score to use for all bases for applicable output types, "
         'as text (e.g. use "I" for 40)')
     p_convert.set_defaults(func=_main_convert)
+
+    __add_common_args(p_identity)
+    p_identity.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_identity.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_identity.add_argument("-r", "--reference",
+            help="optional reference file path (default: use first query as ref)")
+    p_identity.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_identity.add_argument("--ref-format",
+        help="format of reference "
+        "(default: detect from reference filename if possible)")
+    p_identity.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_identity.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_identity.set_defaults(func=_main_identity)
 
     return parser
 
