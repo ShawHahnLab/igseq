@@ -28,18 +28,27 @@ def identity(path_in, path_out, path_ref=None, fmt_in=None, fmt_in_ref=None, col
     LOGGER.info("given input format: %s", path_out)
     LOGGER.info("given colmap: %s", colmap)
     refs = None
+    fmt_ref = ""
     if path_ref:
         with RecordReader(path_ref, fmt_in_ref, colmap, dry_run=dry_run) as reader:
             refs = list(reader)
+            fmt_ref = reader.fmt
+    else:
+        if fmt_in_ref:
+            LOGGER.warning("given ref format ignored if ref not given")
     # Trying to leverage the same (otherwise-sequence-focused) Record code here
     # for a more generic table.  Will implicitly also allow csv.gz/tsv/tsv.gz
     fmt_out = None
     if path_out == "-":
         fmt_out = "csv"
     colmap_out = {field: field for field in ["query", "ref", "identity"]}
-
+    tabular = lambda txt: any(ext in txt for ext in ["csv", "tsv"])
     with RecordReader(path_in, fmt_in, colmap, dry_run=dry_run) as reader, \
         RecordWriter(path_out, fmt_out, colmap_out, dry_run=dry_run) as writer:
+        if not fmt_ref:
+            fmt_ref = reader.fmt
+        if not tabular(reader.fmt) and not tabular(fmt_ref) and colmap:
+            LOGGER.warning("given column names ignored for non-tabular inputs")
         for record in reader:
             if refs is None:
                 refs = [record]
