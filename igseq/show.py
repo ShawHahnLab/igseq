@@ -57,17 +57,18 @@ def list_files(text_items):
 def show_file(path, force=False):
     """Infer filetype from extention and pretty-print to stdout."""
     path = Path(path)
-    if path.suffix in [".csv"]:
+    ext = path.suffix.removeprefix(".").lower()
+    if ext in ["csv"]:
         show_csv(path)
-    elif path.suffix in [".tsv", ".tab"]:
+    elif ext in ["tsv", "tab"]:
         show_csv(path, delimiter="\t")
-    elif path.suffix in [".txt"]:
+    elif ext in ["txt"]:
         show_text(path)
-    elif path.suffix in [".yml", ".yaml"]:
+    elif ext in ["yml", "yaml"]:
         show_text(path)
-    elif path.suffix in [".fasta", ".fa", ".fastq", ".fq"]:
+    elif ext in ["fasta", "fa", "fastq", "fq"]:
         show_text(path)
-    elif path.suffix in [".tree", ".newick"]:
+    elif ext in ["tree", "newick"]:
         show_tree(path)
     else:
         if force:
