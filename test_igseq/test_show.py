@@ -113,6 +113,9 @@ class TestShowOneFile(ABC):
 class TestShowCSV(TestBase, TestShowOneFile):
     """Test show_files with external CSV file"""
 
+class TestShowCSVUppercase(TestBase, TestShowOneFile):
+    """Test show_files with external CSV file with uppercase extension."""
+
 class TestShowStubCSV(TestBase, TestShowOneFile):
     """Test show_files with header-only CSV file"""
 
