@@ -138,6 +138,8 @@ class TestScoreIdentity(unittest.TestCase):
         # without also needing a lot of extra metadata tracking.)
         cases = [
             ("ACTG", "ACTG", 1.00), # identical
+            ("AC-G", "A-CG", 1.00), # identical (gaps disregarded)
+            ("ACTG", "actg", 1.00), # identical (case disregarded)
             ("ACTG",     "", 0.00), # one blank -> 0 by definition
             (    "", "ACTG", 0.00), # other blank -> 0 by definition
             (    "",     "", 0.00), # both blank -> 0 by definition
