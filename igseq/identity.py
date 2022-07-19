@@ -10,7 +10,8 @@ allows, for example, junction sequences from an AIRR tsv as queries and a FASTA
 of known junctions as references.
 
 The scoring is based on a simple global pairwise alignment, with matches scored
-as 1, mismatches and gaps 0.
+as 1, mismatches and gaps 0.  Any existing gaps are removed before comparing
+sequences, and differeces in case (lower/upper) are disregarded.
 """
 
 import logging
@@ -68,5 +69,12 @@ def score_identity(seq1, seq2):
     """
     # These can be strings or Seq objects, but not SeqRecords.
     if seq1 and seq2:
+        # We'll disregard gaps and case.  If whatever these objects are can't
+        # handle those methods we'll throw a ValueError.
+        try:
+            seq1 = seq1.replace("-", "").upper()
+            seq2 = seq2.replace("-", "").upper()
+        except AttributeError as err:
+            raise ValueError("score_identity arguments should be Seq objects or strings") from err
         return ALIGNER.score(seq1, seq2)/max(len(seq1), len(seq2))
     return 0
