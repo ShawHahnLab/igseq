@@ -19,6 +19,7 @@ from . import vdj_gather
 from . import vdj_match
 from . import convert
 from . import identity
+from . import id_div
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -240,6 +241,18 @@ def _main_identity(args):
         colmap=colmap,
         dry_run=args.dry_run)
 
+def _main_id_div(args):
+    id_div.id_div(
+        path_in=args.query,
+        path_abs=args.abs,
+        path_id_div=args.output_id_div,
+        path_cov=args.output_cov,
+        path_airr_update=args.airr_update,
+        paths_ref=args.reference,
+        species=args.species,
+        dry_run=args.dry_run,
+        threads=args.threads)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -305,6 +318,10 @@ def __setup_arg_parser():
     p_identity = subps.add_parser("identity",
         help="Calculate pairwise identities",
         description=rewrap(identity.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_id_div = subps.add_parser("id-div",
+        help="Create identity/divergence tables",
+        description=rewrap(id_div.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -518,6 +535,28 @@ def __setup_arg_parser():
     p_identity.add_argument("--col-seq",
         help="Name of column containing sequences (for tabular input/output)")
     p_identity.set_defaults(func=_main_identity)
+
+    __add_common_args(p_id_div)
+    p_id_div.add_argument("-Q", "--query", required=True,
+        help="query input file path, or a literal '-' for standard input")
+    p_id_div.add_argument("-a", "--abs",
+            help="antibody sequences to calculate identity to")
+    p_id_div.add_argument("-r", "--reference", nargs="+",
+            help="IgBLAST reference files, to calculate germline divergence from "
+            "(optional if input is already an AIRR rearrangements table)")
+    p_id_div.add_argument("-i", "--output-id-div",
+        help="Output file path for ID/DIV table")
+    p_id_div.add_argument("-c", "--output-cov",
+        help="Output file path for coverage table")
+    p_id_div.add_argument("-A", "--airr-update",
+        help="Path for existing SONAR AIRR TSV to add v_identity to")
+    p_id_div.add_argument("-S", "--species",
+            help="species to use (human or rhesus). "
+            "(default: infer from database if possible; "
+            "optional if input is already an AIRR rearrangements table)")
+    p_id_div.add_argument("-t", "--threads", type=int, default=1,
+        help="number of threads for parallel processing (default: 1)")
+    p_id_div.set_defaults(func=_main_id_div)
 
     return parser
 

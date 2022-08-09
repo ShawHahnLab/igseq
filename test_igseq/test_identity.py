@@ -3,7 +3,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from igseq.identity import identity, score_identity
+from igseq.identity import identity, align, calc_identity, calc_coverage
 from .util import TestBase
 from .test_convert import gunzip
 
@@ -125,45 +125,67 @@ class TestIdentityTabular(TestBase):
             self.assertTxtsMatch(self.path/"output_single.csv", Path(tmpdir)/"output.csv")
 
 
-class TestScoreIdentity(unittest.TestCase):
-    """Basic tests of the identitiy calculation."""
+class TestAlign(unittest.TestCase):
+    """Basic tests of sequence alignment."""
 
-    def test_score_identity(self):
-        """Test that pairs of input sequences each produce the appropriate score."""
+    def test_align(self):
+        """Test that Seq objects can be supplied but not SeqRecords."""
+        # Seq objects should work
+        seq1 = Seq("ACTG")
+        seq2 = Seq("ACTG")
+        self.assertEqual(align(seq1, seq2).score, 4)
+        # can't apply SeqReords though
+        rec1 = SeqRecord(seq1, id="seq1")
+        rec2 = SeqRecord(seq2, id="seq2")
+        with self.assertRaises(ValueError):
+            align(rec1, rec2)
+
+
+class TestCalc(unittest.TestCase):
+    """Basic tests of the identity and coverage calculations."""
+
+    def setUp(self):
         # Bio.Align.PairwiseAligner as used in the implementation will match
         # characters (such as those that might represent IUPAC codes) in a
         # simple way, just literally.  So that means N matches only N rather
         # than any nucleotide, and so on.  (Makse sense, considering that's the
         # only sane way it could handle arbitrary sequence types (NT or AA)
         # without also needing a lot of extra metadata tracking.)
-        cases = [
-            ("ACTG", "ACTG", 1.00), # identical
-            ("AC-G", "A-CG", 1.00), # identical (gaps disregarded)
-            ("ACTG", "actg", 1.00), # identical (case disregarded)
-            ("ACTG",     "", 0.00), # one blank -> 0 by definition
-            (    "", "ACTG", 0.00), # other blank -> 0 by definition
-            (    "",     "", 0.00), # both blank -> 0 by definition
-            ("ACTG", "ACTA", 0.75), # one mismatch
-            ("ACTG", "ACTN", 0.75), # one mismatch, IUPAC if NT
-            ("ACTN", "ACTN", 1.00), # identical with IUPAC if NT
-            ("ACTR", "ACTR", 1.00), # identical with IUPAC if NT
-            ("ACDE", "ACDE", 1.00), # or are these AA?  that works too.
-            ("ACDE", "ACDP", 0.75), # one mismatch, AA
+        #
+        # Each entry in this list is the target sequence, query sequence,
+        # expected identity, and expected coverage.
+        self.cases = [
+            ("ACTG", "ACTG", 1.00, 1.00), # identical
+            ("AC-G", "A-CG", 1.00, 1.00), # identical (gaps disregarded)
+            ("ACTG", "actg", 1.00, 1.00), # identical (case disregarded)
+            ("ACTG",  "ACT", 0.75, 0.75), # one mismatch, 75% coverage
+            ( "ACT", "ACTG", 0.75, 1.00), # one mismatch, 100% coverage
+            ("ACTG",     "", 0.00, 0.00), # one blank -> 0 by definition
+            (    "", "ACTG", 0.00, 0.00), # other blank -> 0 by definition
+            (    "",     "", 0.00, 0.00), # both blank -> 0 by definition
+            ("ACTG", "ACTA", 0.75, 1.00), # one mismatch
+            ("ACTG", "ACTN", 0.75, 1.00), # one mismatch, IUPAC if NT
+            ("ACTN", "ACTN", 1.00, 1.00), # identical with IUPAC if NT
+            ("ACTR", "ACTR", 1.00, 1.00), # identical with IUPAC if NT
+            ("ACDE", "ACDE", 1.00, 1.00), # or are these AA?  that works too.
+            ("ACDE", "ACDP", 0.75, 1.00), # one mismatch, AA
             ]
-        for case in cases:
+
+    def test_calc_identity(self):
+        """Test that pairs of input sequences each produce the appropriate identity score."""
+        for case in self.cases:
             with self.subTest(pair=case[0:2]):
                 self.assertEqual(
-                    score_identity(case[0], case[1]),
+                    calc_identity(align(case[0], case[1])),
                     case[2])
 
-    def test_score_identity_objs(self):
-        """Test that Seq objects can be supplied but not SeqRecords."""
-        # Seq objects should work
-        seq1 = Seq("ACTG")
-        seq2 = Seq("ACTG")
-        self.assertEqual(score_identity(seq1, seq2), 1)
-        # can't apply SeqReords though
-        rec1 = SeqRecord(seq1, id="seq1")
-        rec2 = SeqRecord(seq2, id="seq2")
-        with self.assertRaises(ValueError):
-            self.assertEqual(score_identity(rec1, rec2), 1)
+    def test_calc_coverage(self):
+        """Test that pairs of input sequences each produce the appropriate coverage score.
+
+        Coverage is for the second sequence relative to the first.
+        """
+        for case in self.cases:
+            with self.subTest(pair=case[0:2]):
+                self.assertEqual(
+                    calc_coverage(align(case[0], case[1])),
+                    case[3])

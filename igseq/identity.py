@@ -14,6 +14,7 @@ as 1, mismatches and gaps 0.  Any existing gaps are removed before comparing
 sequences, and differeces in case (lower/upper) are disregarded.
 """
 
+import re
 import logging
 from Bio import Align
 from .record import RecordReader, RecordWriter
@@ -54,27 +55,56 @@ def identity(path_in, path_out, path_ref=None, fmt_in=None, fmt_in_ref=None, col
             if refs is None:
                 refs = [record]
             for ref in refs:
-                score = score_identity(
+                score = calc_identity(align(
                     record[reader.colmap["sequence"]],
-                    ref[reader.colmap["sequence"]])
+                    ref[reader.colmap["sequence"]]))
                 writer.write({
                     "query": record["sequence_id"],
                     "ref": ref["sequence_id"],
                     "identity": score})
 
-def score_identity(seq1, seq2):
-    """Get identity fraction between two sequences.
+def align(seq1, seq2):
+    """Simple pairwise alignment, ignoring case and gaps in input.
 
-    If one or both are zero-length the result will be 0.
+    If either or both inputs are empty, the result is None.
     """
-    # These can be strings or Seq objects, but not SeqRecords.
     if seq1 and seq2:
-        # We'll disregard gaps and case.  If whatever these objects are can't
-        # handle those methods we'll throw a ValueError.
-        try:
-            seq1 = seq1.replace("-", "").upper()
-            seq2 = seq2.replace("-", "").upper()
-        except AttributeError as err:
-            raise ValueError("score_identity arguments should be Seq objects or strings") from err
-        return ALIGNER.score(seq1, seq2)/max(len(seq1), len(seq2))
-    return 0
+        seq1 = _munge_seq(seq1)
+        seq2 = _munge_seq(seq2)
+        return ALIGNER.align(seq1, seq2)[0]
+    return None
+
+def calc_identity(aln):
+    """Calculate identity fraction from an alignment object."""
+    if not aln:
+        return 0
+    return aln.score/max(len(aln.target), len(aln.query))
+
+def calc_coverage(aln):
+    """Calculate coverage fraction from an alignment object."""
+    # See Biopython #3991
+    if not aln:
+        return 0
+    parts = aln.format().split("\n")
+    ref, query = [parts[0], parts[2]]
+    # trimming, based on SONAR
+    left_gap = re.match( "-+", ref) or re.match( "-+", query)
+    if left_gap:
+        query = query[left_gap.end():]
+        ref = ref[left_gap.end():]
+    # NOTE: not quite the same as SONAR which has re.match("-+", query).  I
+    # don't see how that would work though.
+    right_gap = re.search("-+$", ref) or re.search("-+$", query)
+    if right_gap:
+        query = query[:right_gap.start()]
+        ref = ref[:right_gap.start()]
+    coverage = len(re.sub("-", "", ref))/len(aln.target)
+    return coverage
+
+def _munge_seq(seq):
+    # We'll disregard gaps and case.  If whatever these objects are can't
+    # handle those methods we'll throw a ValueError.
+    try:
+        return seq.replace("-", "").upper()
+    except AttributeError as err:
+        raise ValueError("argument should be Seq object or string") from err
