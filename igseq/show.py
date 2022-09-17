@@ -13,6 +13,7 @@ include exact matches only.
     igseq show primers        show igseq's primers.csv with nice formatting
     igseq show IGHV.fasta     show all builtin IGHV FASTAs concatenated
     igseq show some/file.csv  show an arbitrary CSV file
+    igseq show some/abs.tree  show an arbitrary Newick tree file (topology only)
 """
 
 import os
@@ -20,6 +21,7 @@ import sys
 import logging
 from pathlib import Path
 from csv import DictReader
+import newick
 from .util import FILES
 
 LOGGER = logging.getLogger(__name__)
@@ -55,16 +57,19 @@ def list_files(text_items):
 def show_file(path, force=False):
     """Infer filetype from extention and pretty-print to stdout."""
     path = Path(path)
-    if path.suffix in [".csv"]:
+    ext = path.suffix.removeprefix(".").lower()
+    if ext in ["csv"]:
         show_csv(path)
-    elif path.suffix in [".tsv", ".tab"]:
+    elif ext in ["tsv", "tab"]:
         show_csv(path, delimiter="\t")
-    elif path.suffix in [".txt"]:
+    elif ext in ["txt"]:
         show_text(path)
-    elif path.suffix in [".yml", ".yaml"]:
+    elif ext in ["yml", "yaml"]:
         show_text(path)
-    elif path.suffix in [".fasta", ".fa", ".fastq", ".fq"]:
+    elif ext in ["fasta", "fa", "fastq", "fq"]:
         show_text(path)
+    elif ext in ["tree", "newick"]:
+        show_tree(path)
     else:
         if force:
             show_raw(path)
@@ -97,6 +102,12 @@ def show_grid(grid):
         for key in fieldnames:
             print(str(row[key]).rjust(widths[key]+1), end="")
         print("")
+
+def show_tree(path):
+    """Print a newick tree file to stdout."""
+    tree = newick.read(path)[0]
+    sys.stdout.write(tree.ascii_art())
+    sys.stdout.write("\n")
 
 def show_text(path):
     """Print a plaintext file to stdout."""

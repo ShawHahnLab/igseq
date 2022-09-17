@@ -1,5 +1,7 @@
 # IgSeq Utilities
 
+[![CircleCI Build Status](https://circleci.com/gh/ShawHahnLab/igseq/tree/dev.svg?style=svg)](https://circleci.com/gh/ShawHahnLab/igseq/tree/dev)
+
 **Work in Progress**
 
 A command-line tool for various common Ig-Seq tasks.  These are heavily biased

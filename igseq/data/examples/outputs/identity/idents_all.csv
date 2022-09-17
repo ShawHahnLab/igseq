@@ -1,0 +1,10 @@
+query,ref,identity
+query1,query1,1.0
+query1,query2,0.9835164835164835
+query1,query3,0.978021978021978
+query2,query1,0.9835164835164835
+query2,query2,1.0
+query2,query3,0.9615384615384616
+query3,query1,0.978021978021978
+query3,query2,0.9615384615384616
+query3,query3,1.0

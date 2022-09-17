@@ -1,0 +1,4 @@
+query,ref,identity
+query1,query1,1.0
+query2,query1,0.9835164835164835
+query3,query1,0.978021978021978

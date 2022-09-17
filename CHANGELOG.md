@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.0 - 2022-09-17
+
+### Added
+
+ * Automatic usage of all available references for a given species in `igblast`
+   command ([#39])
+ * `identity` command for calculating pairwise identity between arbitrary
+   queries and references ([#31], [#37])
+ * Support for showing basic tree topology for Newick-format files in `show`
+   command ([#33])
+
+### Fixed
+
+ * Uppercase file extensions are now supported by the `show` command ([#35])
+ * broken pipes (such as from `igseq something | something else`) are now
+   handled gracefully ([#30])
+
+[#39]: https://github.com/ShawHahnLab/igseq/pull/39
+[#37]: https://github.com/ShawHahnLab/igseq/pull/37
+[#35]: https://github.com/ShawHahnLab/igseq/pull/35
+[#33]: https://github.com/ShawHahnLab/igseq/pull/33
+[#31]: https://github.com/ShawHahnLab/igseq/pull/31
+[#30]: https://github.com/ShawHahnLab/igseq/pull/30
+
 ## 0.3.0 - 2022-07-14
 
 ### Added

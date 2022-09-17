@@ -2,6 +2,7 @@
 Utilities for common IgSeq tasks.
 """
 
+import os
 import sys
 import argparse
 import logging
@@ -17,6 +18,7 @@ from . import summarize
 from . import vdj_gather
 from . import vdj_match
 from . import convert
+from . import identity
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -72,22 +74,42 @@ def main(arglist=None):
         prefix = "[DRYRUN] "
     _setup_log(args.verbose, args.quiet, prefix)
     try:
-        if args_extra:
-            # If there were unparsed arguments, see if we're in one of the
-            # commands (currently just igblast) that can take extra
-            # pass-through arguments.  If so pass them along, but if not, error
-            # out.
-            if args.func in [_main_igblast]:
-                args.func(args, args_extra)
+        try:
+            if args_extra:
+                # If there were unparsed arguments, see if we're in one of the
+                # commands (currently just igblast) that can take extra
+                # pass-through arguments.  If so pass them along, but if not,
+                # error out.
+                if args.func in [_main_igblast]:
+                    args.func(args, args_extra)
+                else:
+                    parser.parse_args(args_extra)
             else:
-                parser.parse_args(args_extra)
-        else:
-            args.func(args)
-    except IgSeqError as err:
-        sys.stderr.write(
-            f"\nigseq failed because: {err.message}\n"
-            "Considering adding -v or -vv to the command if the problem isn't clear.\n")
-        sys.exit(1)
+                args.func(args)
+        except IgSeqError as err:
+            sys.stderr.write(
+                f"\nigseq failed because: {err.message}\n"
+                "Considering adding -v or -vv to the command if the problem isn't clear.\n")
+            sys.exit(1)
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except BrokenPipeError:
+        # If stdout and/or stderr were writing to a pipe and that pipe is now
+        # closed, we'll swap in /dev/null for whichever it is to handle this
+        # quietly and to prevent it from arising again when Python tries to
+        # flush file handles on exit.
+        # Adapted from
+        # https://stackoverflow.com/questions/26692284
+        # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        try:
+            sys.stdout.flush()
+        except BrokenPipeError:
+            os.dup2(devnull, sys.stdout.fileno())
+        try:
+            sys.stderr.flush()
+        except BrokenPipeError:
+            os.dup2(devnull, sys.stderr.fileno())
 
 def _main_getreads(args):
     if args.no_counts:
@@ -207,6 +229,17 @@ def _main_convert(args):
         dummyqual=args.dummy_qual,
         dry_run=args.dry_run)
 
+def _main_identity(args):
+    colmap = args_to_colmap(args)
+    identity.identity(
+        path_in=args.input,
+        path_out=args.output,
+        path_ref=args.reference,
+        fmt_in=args.input_format,
+        fmt_in_ref=args.ref_format,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -268,6 +301,10 @@ def __setup_arg_parser():
     p_convert = subps.add_parser("convert",
         help="Convert FASTA/FASTQ/CSV/TSV",
         description=rewrap(convert.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_identity = subps.add_parser("identity",
+        help="Calculate pairwise identities",
+        description=rewrap(identity.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -462,6 +499,25 @@ def __setup_arg_parser():
         help="Quality score to use for all bases for applicable output types, "
         'as text (e.g. use "I" for 40)')
     p_convert.set_defaults(func=_main_convert)
+
+    __add_common_args(p_identity)
+    p_identity.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_identity.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_identity.add_argument("-r", "--reference",
+            help="optional reference file path (default: use first query as ref)")
+    p_identity.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_identity.add_argument("--ref-format",
+        help="format of reference "
+        "(default: detect from reference filename if possible)")
+    p_identity.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_identity.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_identity.set_defaults(func=_main_identity)
 
     return parser
 

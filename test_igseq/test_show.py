@@ -99,21 +99,28 @@ class TestShowOneFile(ABC):
     """Abstract class for below specific tests"""
 
     def test_show(self):
-        stdout, stderr = self.redirect_streams(
-            lambda: show.show_files([self.path / "input/file.csv"]))
-        try:
-            with open(self.path/"output/stdout.txt") as f_in:
-                stdout_exp = f_in.read()
-        except FileNotFoundError:
-            stdout_exp = ""
-        self.assertEqual(stdout, stdout_exp)
-        self.assertEqual(stderr, "")
+        for path in (self.path / "input").glob("*"):
+            stdout, stderr = self.redirect_streams(
+                lambda: show.show_files([path]))
+            try:
+                with open(self.path/"output/stdout.txt") as f_in:
+                    stdout_exp = f_in.read()
+            except FileNotFoundError:
+                stdout_exp = ""
+            self.assertEqual(stdout, stdout_exp)
+            self.assertEqual(stderr, "")
 
 class TestShowCSV(TestBase, TestShowOneFile):
     """Test show_files with external CSV file"""
 
+class TestShowCSVUppercase(TestBase, TestShowOneFile):
+    """Test show_files with external CSV file with uppercase extension."""
+
 class TestShowStubCSV(TestBase, TestShowOneFile):
     """Test show_files with header-only CSV file"""
+
+class TestShowTree(TestBase, TestShowOneFile):
+    """Test show_files with external tree file"""
 
 class TestShowMissingCSV(TestBase):
     """Test show_files with non-existent path"""
