@@ -34,6 +34,24 @@ class TestIgblast(TestBase):
             igblast.detect_organism(["species1", "species2"], "rhesus"),
             "rhesus_monkey")
 
+    def test_detect_ref(self):
+        """Test that appropriate reference is selected based on species when needed."""
+        # Should be able to infer ref from exact species name or synonym
+        with self.assertLogs(level="INFO") as log_cm:
+            igblast.igblast(ref_paths=None, query_path="-", species="rhesus", dry_run=True)
+            self.assertTrue(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        with self.assertLogs(level="INFO") as log_cm:
+            igblast.igblast(ref_paths=None, query_path="-", species="rhesus_monkey", dry_run=True)
+            self.assertTrue(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        # Shouldn't infer ref when explicitly given
+        with self.assertLogs(level="INFO") as log_cm:
+            igblast.igblast(ref_paths=["rhesus"], query_path="-", species="rhesus", dry_run=True)
+            self.assertFalse(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        # Should still catch unknown names
+        with self.assertRaises(IgSeqError) as err_cm:
+            igblast.igblast(ref_paths=None, query_path="-", species="unknown", dry_run=True)
+            self.assertIn("species not recognized", err_cm.exception.message)
+
 
 class TestIgblastInternal(TestBase):
     """Test igblast with internal db."""
