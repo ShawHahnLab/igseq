@@ -70,6 +70,11 @@ def igblast(
     LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given extra args: %s", extra_args)
     LOGGER.info("given threads: %s", threads)
+    if species and not ref_paths:
+        # If only species is given, default to using all available reference
+        # sets for that species
+        ref_paths = [_fuzzy_species_match(species)]
+        LOGGER.info("inferred ref path: %s", ref_paths[0])
     attrs_list = vdj.parse_vdj_paths(ref_paths)
     for attrs in attrs_list:
         LOGGER.info("detected ref path: %s", attrs["path"])
@@ -104,12 +109,11 @@ def detect_organism(species_det, species=None):
         species = species_det.pop()
         LOGGER.info("detected species: %s", species)
     # match species names if needed
-    species_key = re.sub("[^a-z]", "", species.lower())
-    if species not in SPECIESMAP and species_key in SPECIESOTHER:
-        species_new = SPECIESOTHER[species_key]
+    species_new = _fuzzy_species_match(species)
+    if species_new != species:
         LOGGER.info(
-            "detected species as synonym: %s -> %s -> %s", species, species_key, species_new)
-        species = species_new
+            "detected species as synonym: %s -> %s", species, species_new)
+    species = species_new
     try:
         organism = SPECIESMAP[species]
     except KeyError as err:
@@ -117,6 +121,15 @@ def detect_organism(species_det, species=None):
         raise util.IgSeqError(f"species not recognized.  should be one of: {keys}") from err
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
+
+def _fuzzy_species_match(species):
+    """Fuzzy-match one of our species names"""
+    species_key = re.sub("[^a-z]", "", species.lower())
+    try:
+        return SPECIESOTHER[species_key]
+    except KeyError as err:
+        keys = str(SPECIESMAP.keys())
+        raise util.IgSeqError(f"species not recognized.  should be one of: {keys}") from err
 
 @contextmanager
 def run_igblast(
