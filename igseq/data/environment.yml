@@ -9,7 +9,7 @@ dependencies:
   - biopython>=1.79,<2
   - python-newick>=1.3.2,<2
   - bwa>=0.7.17,<0.8
-  - samtools>=1.13,<2
-  - cutadapt>=3.5,<4
+  - samtools>=1.15,<2
+  - cutadapt>=3.7,<4
   - pear>=0.9.6,<1
-  - igblast>=1.17.1,<2
+  - igblast>=1.19,<2
