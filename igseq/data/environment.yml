@@ -13,3 +13,4 @@ dependencies:
   - cutadapt>=3.7,<4
   - pear>=0.9.6,<1
   - igblast>=1.19,<2
+  - fasttree>=2.1,<3

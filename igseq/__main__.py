@@ -19,6 +19,7 @@ from . import vdj_gather
 from . import vdj_match
 from . import convert
 from . import identity
+from . import tree
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -240,6 +241,19 @@ def _main_identity(args):
         colmap=colmap,
         dry_run=args.dry_run)
 
+def _main_tree(args):
+    colmap = args_to_colmap(args)
+    tree.tree(
+        path_in=args.input,
+        path_out=args.output,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        aligned=args.aligned,
+        pattern=args.set_pattern,
+        lists=args.set_list,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -305,6 +319,10 @@ def __setup_arg_parser():
     p_identity = subps.add_parser("identity",
         help="Calculate pairwise identities",
         description=rewrap(identity.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_tree = subps.add_parser("tree",
+        help="Create and format phylogenetic trees",
+        description=rewrap(tree.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -518,6 +536,32 @@ def __setup_arg_parser():
     p_identity.add_argument("--col-seq",
         help="Name of column containing sequences (for tabular input/output)")
     p_identity.set_defaults(func=_main_identity)
+
+    __add_common_args(p_tree)
+    p_tree.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_tree.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_tree.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_tree.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_tree.add_argument("--aligned", action=argparse.BooleanOptionalAction,
+        help="Explicitly specify if input is aligned or not, for sequence input "
+        "(default: guess from lengths)")
+    p_tree.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input)")
+    p_tree.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input)")
+    p_tree.add_argument("--set-pattern", "-P",
+        help="regular expression to define set membership, with zero or one capture groups. "
+        "If a capture group is given, only that text is used to define the set names.")
+    p_tree.add_argument("--set-list", "-L", action="append",
+        help="filename containing a list of sequence IDs for a set.  "
+        "This can be given multiple times.")
+    p_tree.set_defaults(func=_main_tree)
 
     return parser
 
