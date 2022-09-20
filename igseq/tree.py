@@ -15,9 +15,12 @@ Nodes and branches can be color-coded according to each node's membership in
 one or more sets.
 """
 
+import re
 import logging
+import random
 from pathlib import Path
 from subprocess import Popen, PIPE
+from collections import defaultdict
 from . import util
 from . import record
 
@@ -79,21 +82,24 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
         if not aligned:
             # TODO: align!
             raise NotImplementedError("MSA not yet implemented")
-        # TODO make tree
-        newick_data = run_fasttree(records)
+        newick_text = run_fasttree(records)
     else:
         # tree input
         if fmt_in_inf == "newick":
-            newick_data = load_newick(path_in)
+            raise NotImplementedError("Newick input not yet implemented")
+            newick_text = load_newick_text(path_in)
         else:
             raise NotImplementedError("NEXUS input not yet implemented")
 
     # Handle output
     if fmt_out_inf == "newick":
         with open(path_out, "wt") as f_out:
-            f_out.write(newick_data)
+            f_out.write(newick_text)
     elif fmt_out_inf == "nex":
-        raise NotImplementedError("NEXUS output not yet implemented")
+        seq_ids = [rec["sequence_id"] for rec in records]
+        seq_sets = build_seq_sets(seq_ids, pattern, lists)
+        seq_colors = color_seqs(seq_ids, seq_sets)
+        save_nexus(seq_colors, newick_text, path_out)
     else:
         raise NotImplementedError("image output not yet implemented")
 
@@ -122,6 +128,83 @@ def run_fasttree(records):
         treedata = proc.stdout.read()
     return treedata
 
-def load_newick(path):
+def load_newick_text(path):
     with open(path) as f_in:
         return f_in.read()
+
+def build_seq_sets(seq_ids, pattern=None, list_paths=None):
+    # mapping of set names to sets of seq IDs
+    seq_sets = defaultdict(set)
+    if pattern:
+        for seq_id in seq_ids:
+            match = re.search(pattern, seq_id)
+            if match:
+                try:
+                    set_name = match.group(1)
+                except IndexError:
+                    set_name = match.group(0)
+                seq_sets[set_name].add(seq_id)
+    if list_paths:
+        for list_path in list_paths:
+            with open(list_path) as f_in:
+                for line in f_in:
+                    seq_sets[list_path].add(line.strip())
+    return seq_sets
+
+def color_seqs(seq_ids, seq_sets, seq_set_colors=None):
+    """Assign colors to sequences based on set membership."""
+    if not seq_set_colors:
+        seq_set_colors = make_seq_set_colors(seq_sets)
+    seq_colors = {}
+    for seq_id in seq_ids:
+        # sets that contain this sequence, and the colors for those sets
+        sets_here = {set_name for set_name in seq_sets if seq_id in seq_sets[set_name]}
+        colors_here = [seq_set_colors[set_name] for set_name in sets_here]
+        combo_color = merge_colors(colors_here, len(seq_set_colors))
+        seq_colors[seq_id] = combo_color
+    return seq_colors
+
+def make_seq_set_colors(seq_sets):
+    # TODO do smarter than just randomizing!
+    seq_set_colors = {}
+    for set_name in seq_sets:
+        seq_set_colors[set_name] = [random.randint(0, 255) for _ in range(3)]
+    return seq_set_colors
+
+def merge_colors(colors, scale):
+    """Take an average of a list of colors and shift toward black."""
+    result = [0, 0, 0]
+    if not colors:
+        return result
+    for color in colors:
+        for idx in range(3):
+            result[idx] += color[idx]
+    # not quite right, should rotate, really, not move directly toward the
+    # middle... but it'll do for now
+    scaling = ((scale - len(colors))/scale)**0.3
+    for idx in range(3):
+        result[idx] = result[idx] / len(colors)
+        result[idx] = int(result[idx] * scaling)
+    return result
+
+def colorstr(color):
+    """Convert trio of 0:255 ints to hex color string."""
+    return "#" + "".join([f"{c:02x}" for c in color])
+
+def save_nexus(seq_colors, newick_text, path):
+    with open(path, "wt") as f_out:
+        f_out.write("#NEXUS\n")
+        f_out.write("begin taxa;\n")
+        f_out.write(f"dimensions ntax={len(seq_colors)};\n")
+        f_out.write("taxlabels\n")
+        for seq_id, seq_color in seq_colors.items():
+            color_txt = colorstr(seq_color)
+            f_out.write(f"'{seq_id}'[&!color={color_txt}]\n")
+        f_out.write(";\n")
+        f_out.write("end;\n")
+        f_out.write("\n")
+        # TODO mark rooted/unrooted?
+        f_out.write("begin trees;\n")
+        f_out.write(f"tree tree_1 = {newick_text}\n")
+        f_out.write("end;\n")
+        f_out.write("\n")
