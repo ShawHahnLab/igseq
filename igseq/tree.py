@@ -12,7 +12,10 @@ Tree formats:
     png/pdf: Rendered tree image (for output)
 
 Nodes and branches can be color-coded according to each node's membership in
-one or more sets.
+one or more sets, as defined by a regular expression matching sequence IDs
+(-P) or explicit lists of sequence IDs via text files (-L).  Note that set
+membership is combined from all sources; seq1 matching set1 via the
+pattern-matching can also be listed via -L as a member of set2.
 """
 
 import re
@@ -40,15 +43,16 @@ FMT_EXT_MAP = {
 FMT_IN = {"nex", "newick"}
 FMT_OUT = {"nex", "newick", "pdf", "png"}
 
-def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=None, lists=None, colmap=None, dry_run=False):
+def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=None, lists=None, colors=None, colmap=None, dry_run=False):
     LOGGER.info("given input path: %s", path_in)
     LOGGER.info("given output path: %s", path_out)
     LOGGER.info("given input format: %s", fmt_in)
     LOGGER.info("given output format: %s", fmt_out)
     LOGGER.info("given aligned attribute: %s", aligned)
-    LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given set pattern: %s", pattern)
     LOGGER.info("given set lists: %s", lists)
+    LOGGER.info("given set colors: %s", colors)
+    LOGGER.info("given colmap: %s", colmap)
 
     # Infer input format
     fmt_in_tree = infer_tree_fmt(path_in)
@@ -69,6 +73,16 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
         LOGGER.info("inferred output format: %s", fmt_out_inf)
     if fmt_out_inf not in FMT_OUT:
         raise util.IgSeqError(f"Can't use format {fmt_out_inf} for output")
+
+    # Parse lists
+    lists = parse_lists(lists)
+    if lists:
+        LOGGER.info("parsed lists: %s", lists)
+
+    # Parse colors
+    colors = parse_colors(colors)
+    if colors:
+        LOGGER.info("parsed colors: %s", colors)
 
     # Handle input
     if fmt_in_inf in record.FMT_EXT_MAP.values():
@@ -98,10 +112,32 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
     elif fmt_out_inf == "nex":
         seq_ids = [rec["sequence_id"] for rec in records]
         seq_sets = build_seq_sets(seq_ids, pattern, lists)
-        seq_colors = color_seqs(seq_ids, seq_sets)
+        seq_colors = color_seqs(seq_ids, seq_sets, colors)
         save_nexus(seq_colors, newick_text, path_out)
     else:
         raise NotImplementedError("image output not yet implemented")
+
+def parse_lists(lists):
+    lists = lists or []
+    # TODO allow missing name
+    lists = [seq_list.split("=", 1) for seq_list in lists]
+    lists = {p[0]: load_seq_list(p[1]) for p in lists}
+    return lists
+
+def parse_colors(color_texts):
+    """Parse list of "setname=colorcode" strings into dictionary of RGB tuples."""
+    colors = color_texts or []
+    # TODO allow missing name
+    colors = [color.split("=", 1) for color in colors]
+    colors = {p[0]: color_str_to_trio(p[1]) for p in colors}
+    return colors
+
+def load_seq_list(path):
+    seq_list = []
+    with open(path) as f_in:
+        for line in f_in:
+            seq_list.append(line.strip())
+    return seq_list
 
 def looks_aligned(records):
     # all the same length looks aligned, multiple lengths doesn't.
@@ -132,7 +168,7 @@ def load_newick_text(path):
     with open(path) as f_in:
         return f_in.read()
 
-def build_seq_sets(seq_ids, pattern=None, list_paths=None):
+def build_seq_sets(seq_ids, pattern=None, lists=None):
     # mapping of set names to sets of seq IDs
     seq_sets = defaultdict(set)
     if pattern:
@@ -144,23 +180,22 @@ def build_seq_sets(seq_ids, pattern=None, list_paths=None):
                 except IndexError:
                     set_name = match.group(0)
                 seq_sets[set_name].add(seq_id)
-    if list_paths:
-        for list_path in list_paths:
-            with open(list_path) as f_in:
-                for line in f_in:
-                    seq_sets[list_path].add(line.strip())
+    if lists:
+        for set_name, seq_set_ids in lists.items():
+            seq_sets[set_name].update(seq_set_ids)
     return seq_sets
 
 def color_seqs(seq_ids, seq_sets, seq_set_colors=None):
     """Assign colors to sequences based on set membership."""
-    if not seq_set_colors:
-        seq_set_colors = make_seq_set_colors(seq_sets)
+    seq_set_colors_combo = make_seq_set_colors(seq_sets)
+    if seq_set_colors:
+        seq_set_colors_combo.update(seq_set_colors)
     seq_colors = {}
     for seq_id in seq_ids:
         # sets that contain this sequence, and the colors for those sets
         sets_here = {set_name for set_name in seq_sets if seq_id in seq_sets[set_name]}
-        colors_here = [seq_set_colors[set_name] for set_name in sets_here]
-        combo_color = merge_colors(colors_here, len(seq_set_colors))
+        colors_here = [seq_set_colors_combo[set_name] for set_name in sets_here]
+        combo_color = merge_colors(colors_here, len(seq_set_colors_combo))
         seq_colors[seq_id] = combo_color
     return seq_colors
 
@@ -176,6 +211,8 @@ def merge_colors(colors, scale):
     result = [0, 0, 0]
     if not colors:
         return result
+    if len(colors) == 1:
+        return colors[0]
     for color in colors:
         for idx in range(3):
             result[idx] += color[idx]
@@ -187,7 +224,13 @@ def merge_colors(colors, scale):
         result[idx] = int(result[idx] * scaling)
     return result
 
-def colorstr(color):
+def color_str_to_trio(color_txt):
+    """Convert hex color string to trio of 0:255 ints."""
+    color_txt = color_txt.removeprefix("#")
+    color = [int(color_txt[idx:(idx+2)], 16) for idx in range(0, 6, 2)]
+    return color
+
+def color_trio_to_str(color):
     """Convert trio of 0:255 ints to hex color string."""
     return "#" + "".join([f"{c:02x}" for c in color])
 
@@ -198,7 +241,7 @@ def save_nexus(seq_colors, newick_text, path):
         f_out.write(f"dimensions ntax={len(seq_colors)};\n")
         f_out.write("taxlabels\n")
         for seq_id, seq_color in seq_colors.items():
-            color_txt = colorstr(seq_color)
+            color_txt = color_trio_to_str(seq_color)
             f_out.write(f"'{seq_id}'[&!color={color_txt}]\n")
         f_out.write(";\n")
         f_out.write("end;\n")
