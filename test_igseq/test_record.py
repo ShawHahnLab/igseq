@@ -149,6 +149,31 @@ class TestRecordWriterHandle(TestRecordWriter):
             self.handler.write({"sequence_id": "id", "sequence": "ACTG"})
         self.assertTxtsMatch(self.path/"example.fasta", self.tmp/"example.fasta")
 
+
+class TestRecordWriterString(TestBase):
+    """Test RecordWriter with a StringIO object"""
+
+    def setUp(self):
+        super().setUp()
+        self.fobj = StringIO()
+        self.handler = record.RecordWriter(self.fobj, "fa")
+
+    def test_open(self):
+        self.handler.open()
+
+    def test_write(self):
+        self.handler.open()
+        self.handler.write({"sequence_id": "id", "sequence": "ACTG"})
+        self.handler.close()
+        self.assertEqual(">id\nACTG\n", self.fobj.getvalue())
+
+    def test_context_manager(self):
+        with self.handler:
+            self.assertFalse(self.handler.handle.closed)
+            self.handler.write({"sequence_id": "id", "sequence": "ACTG"})
+        self.assertEqual(">id\nACTG\n", self.fobj.getvalue())
+
+
 class TestRecordReaderString(TestBase):
     """Test RecordReader with a StringIO object"""
 
