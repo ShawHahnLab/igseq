@@ -1,3 +1,4 @@
+from io import StringIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from igseq import record
@@ -147,3 +148,41 @@ class TestRecordWriterHandle(TestRecordWriter):
         with self.handler:
             self.handler.write({"sequence_id": "id", "sequence": "ACTG"})
         self.assertTxtsMatch(self.path/"example.fasta", self.tmp/"example.fasta")
+
+class TestRecordReaderString(TestBase):
+    """Test RecordReader with a StringIO object"""
+
+    def setUp(self):
+        super().setUp()
+        self.fobj = StringIO(">id\nACTG")
+        self.handler = record.RecordReader(self.fobj, "fa")
+
+    def test_open(self):
+        self.handler.open()
+
+    def test_close(self):
+        # no effect if not yet open
+        self.handler.close()
+        # will close if open
+        self.handler.open()
+        self.handler.close()
+
+    def test_reading(self):
+        # always gives one dictionary for each record, whatever the input type
+        self.handler.open()
+        recs = []
+        for rec in self.handler:
+            recs.append(rec)
+        self.assertEqual(recs, [{"sequence_id": "id", "sequence": "ACTG"}])
+        self.handler.close()
+        # needs to be opened first
+        recs = []
+        for rec in self.handler:
+            recs.append(rec)
+            self.assertEqual(recs, [])
+
+    def test_context_manager(self):
+        # As a context manager it will open and close automatically
+        with self.handler:
+            self.assertFalse(self.handler.handle.closed)
+        self.assertTrue(self.handler.handle.closed)
