@@ -94,8 +94,8 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
             aligned = looks_aligned(records)
             LOGGER.info("inferred aligned attribute: %s", aligned)
         if not aligned:
-            # TODO: align!
-            raise NotImplementedError("MSA not yet implemented")
+            LOGGER.info("aligning records")
+            records = run_muscle(records)
         newick_text = run_fasttree(records)
     else:
         # tree input
