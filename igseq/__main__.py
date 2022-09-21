@@ -19,6 +19,7 @@ from . import vdj_gather
 from . import vdj_match
 from . import convert
 from . import identity
+from . import msa
 from . import tree
 from . import show
 from .util import IgSeqError
@@ -241,6 +242,16 @@ def _main_identity(args):
         colmap=colmap,
         dry_run=args.dry_run)
 
+def _main_msa(args):
+    colmap = args_to_colmap(args)
+    msa.msa(
+        path_in=args.input,
+        path_out=args.output,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
 def _main_tree(args):
     colmap = args_to_colmap(args)
     tree.tree(
@@ -320,6 +331,10 @@ def __setup_arg_parser():
     p_identity = subps.add_parser("identity",
         help="Calculate pairwise identities",
         description=rewrap(identity.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_msa = subps.add_parser("msa",
+        help="Create multiple sequence alignments",
+        description=rewrap(msa.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_tree = subps.add_parser("tree",
         help="Create and format phylogenetic trees",
@@ -537,6 +552,25 @@ def __setup_arg_parser():
     p_identity.add_argument("--col-seq",
         help="Name of column containing sequences (for tabular input/output)")
     p_identity.set_defaults(func=_main_identity)
+
+    __add_common_args(p_msa)
+    p_msa.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_msa.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_msa.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_msa.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_msa.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_msa.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_msa.add_argument("--col-seq-desc",
+        help="Name of column containing sequence descriptions (for tabular input/output)")
+    p_msa.set_defaults(func=_main_msa)
 
     __add_common_args(p_tree)
     p_tree.add_argument("input",
