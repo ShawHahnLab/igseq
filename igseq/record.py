@@ -96,9 +96,15 @@ class RecordHandler:
     @staticmethod
     def _infer_fmt(path):
         try:
-            path = Path(path)
-        except TypeError:
-            path = Path(str(path.name))
+            try:
+                # Ordinary file paths
+                path = Path(path)
+            except TypeError:
+                # for example, already-open file handles
+                path = Path(str(path.name))
+        except AttributeError:
+            # for example, StringIO objects
+            return None
         ext = path.suffix.lower()
         ext2 = Path(path.stem).suffix.lower()
         fmt2 = FMT_EXT_MAP.get(ext2)
@@ -158,7 +164,9 @@ class RecordReader(RecordHandler):
         self.reader = None
 
     def open(self):
-        if self.pathlike == "-":
+        if hasattr(self.pathlike, "fileno"):
+            self.handle = self.pathlike
+        elif self.pathlike == "-":
             if "gz" in self.fmt:
                 LOGGER.info("reading gzip from stdin")
                 self.handle = gzip.open(sys.stdin.buffer, "rt", encoding="ascii")
