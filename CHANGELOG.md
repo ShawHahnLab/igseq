@@ -1,5 +1,14 @@
 # Changelog
 
+## dev
+
+### Added
+
+ * `msa` command for building multiple sequence alignments with
+   [MUSCLE](https://drive5.com/muscle5/) ([#41])
+
+[#41]: https://github.com/ShawHahnLab/igseq/pull/41
+
 ## 0.4.0 - 2022-09-17
 
 ### Added
