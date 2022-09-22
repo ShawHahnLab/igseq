@@ -88,3 +88,59 @@ class TestMSA(CommonMSATests, TestBase):
 
 class TestMSALive(CommonMSATests, TestBase, TestLive):
     """Basic test of msa with actual MUSCLE calls."""
+
+
+class TestMSAEmpty(TestMSA):
+    """Test of MSA with no input sequences, with Mock MUSCLE call."""
+
+    def test_msa(self):
+        with TemporaryDirectory() as tmpdir:
+            with self.assertLogs(level="WARNING") as log_cm:
+                stdout, stderr = self.redirect_streams(lambda:
+                    msa.msa(self.path/"input.fasta", Path(tmpdir)/"output.fasta"))
+                self.assertEqual(len(log_cm.output), 1,
+                    "a warning should be logged for empty input")
+                self.assertEqual("", stdout)
+                self.assertEqual("", stderr)
+                self.assertTxtsMatch(
+                    self.path/"output.fasta",
+                    Path(tmpdir)/"output.fasta")
+
+    def test_run_muscle(self):
+        def do_muscle(self, recs):
+            self.records_out = msa.run_muscle(recs)
+        with self.assertLogs(level="WARNING") as log_cm:
+            stdout, stderr = self.redirect_streams(lambda: do_muscle(self, self.records_in))
+            self.assertEqual(len(log_cm.output), 1,
+                "a warning should be logged for empty input")
+            self.assertEqual("", stdout)
+            self.assertEqual("", stderr)
+            self.assertEqual(self.records_out, self.records_out_exp)
+
+
+class TestMSAEmptyLive(TestMSALive):
+    """Test of MSA with no input sequences, with actual MUSCLE calls."""
+
+    def test_msa(self):
+        with TemporaryDirectory() as tmpdir:
+            with self.assertLogs(level="WARNING") as log_cm:
+                stdout, stderr = self.redirect_streams(lambda:
+                    msa.msa(self.path/"input.fasta", Path(tmpdir)/"output.fasta"))
+                self.assertEqual(len(log_cm.output), 1,
+                    "a warning should be logged for empty input")
+                self.assertEqual("", stdout)
+                self.assertEqual("", stderr)
+                self.assertTxtsMatch(
+                    self.path/"output.fasta",
+                    Path(tmpdir)/"output.fasta")
+
+    def test_run_muscle(self):
+        def do_muscle(self, recs):
+            self.records_out = msa.run_muscle(recs)
+        with self.assertLogs(level="WARNING") as log_cm:
+            stdout, stderr = self.redirect_streams(lambda: do_muscle(self, self.records_in))
+            self.assertEqual(len(log_cm.output), 1,
+                "a warning should be logged for empty input")
+            self.assertEqual("", stdout)
+            self.assertEqual("", stderr)
+            self.assertEqual(self.records_out, self.records_out_exp)
