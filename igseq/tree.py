@@ -26,6 +26,7 @@ from subprocess import Popen, PIPE
 from collections import defaultdict
 from . import util
 from . import record
+from . import msa
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
             LOGGER.info("inferred aligned attribute: %s", aligned)
         if not aligned:
             LOGGER.info("aligning records")
-            records = run_muscle(records)
+            records = msa.run_muscle(records)
         newick_text = run_fasttree(records)
     else:
         # tree input
