@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from igseq import msa
 from igseq import tree
+from igseq.util import IgSeqError
 from igseq.record import RecordReader
 from .util import TestBase, TestLive, MockPopen
 from .test_msa import MockPopenMuscle
@@ -88,3 +89,26 @@ class TestTree(CommonTreeTests, TestBase):
 
 class TestTreeLive(CommonTreeTests, TestBase, TestLive):
     """Basic test of msa with actual MUSCLE calls."""
+
+
+class TestTreeEmpty(TestBase):
+    """Test with empty inputs.
+
+    These should just throw exceptions.
+    """
+
+    def setUp(self):
+        super().setUp()
+        with RecordReader(self.path/"input.fasta") as reader:
+            self.records_in = list(reader)
+
+    def test_tree(self):
+        """Test tree with empty file input and newick output."""
+        with self.assertRaises(IgSeqError):
+            with TemporaryDirectory() as tmpdir:
+                tree.tree(self.path/"input.fasta", Path(tmpdir)/"output.tree")
+
+    def test_run_fasttree(self):
+        """Test run_fasttree with zero records."""
+        with self.assertRaises(IgSeqError):
+            tree.run_fasttree([])
