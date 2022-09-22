@@ -50,4 +50,8 @@ def run_muscle(records):
         raise IgSeqError("MUSCLE crashed")
     with RecordReader(StringIO(msa_txt), "fa") as reader:
         records_out = list(reader)
+    # sort according to input records
+    record_lut = {rec["sequence_id"]: rec for rec in records_out}
+    seqids = [rec["sequence_id"] for rec in records]
+    records_out = [record_lut[seqid] for seqid in seqids]
     return records_out
