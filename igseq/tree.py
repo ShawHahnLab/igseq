@@ -90,7 +90,11 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
         # Sequence input
         with record.RecordReader(path_in, fmt_in_inf, colmap, dry_run=dry_run) as reader:
             records = list(reader)
-        # TODO handle empty case
+        # I've written run_muscle so it'll just pass through an empty set of
+        # records with a warning, but even if we did that, fasttree wouldn't
+        # know what to do with it.  better to halt and catch fire.
+        if not records:
+            raise util.IgSeqError(f"No sequences provided from {path_in}")
         if aligned is None:
             aligned = looks_aligned(records)
             LOGGER.info("inferred aligned attribute: %s", aligned)
@@ -154,6 +158,8 @@ def infer_tree_fmt(path):
     return FMT_EXT_MAP.get(ext)
 
 def run_fasttree(records):
+    if not records:
+        raise util.IgSeqError("No seq records provided")
     # TODO -quiet unless -v was given via CLI
     args = ["fasttree", "-nt", "-quiet"]
     with Popen(args, stdin=PIPE, stdout=PIPE, text=True) as proc:
