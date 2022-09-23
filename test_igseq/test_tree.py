@@ -1,6 +1,8 @@
+import re
 from abc import ABC
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import json
 from igseq import msa
 from igseq import tree
 from igseq.util import IgSeqError
@@ -112,3 +114,77 @@ class TestTreeEmpty(TestBase):
         """Test run_fasttree with zero records."""
         with self.assertRaises(IgSeqError):
             tree.run_fasttree([])
+
+
+class TestParseLists(TestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.lists = sorted(self.path.glob("*.txt"))
+        with open(self.path/"output.json") as f_in:
+            self.output_exp = json.load(f_in)
+            for key in self.output_exp:
+                self.output_exp[key] = set(self.output_exp[key])
+
+    def test_parse_lists(self):
+        """Test that parse_lists loads filename lists into seq sets."""
+        output = tree.parse_lists(self.lists)
+        self.assertEqual(output, self.output_exp)
+        # also try explicitly naming the sets
+        lists_named = [f"{idx+1}={path}" for idx, path in enumerate(self.lists)]
+        output_named = {re.sub("set", "", k): v for k, v in self.output_exp.items()}
+        output = tree.parse_lists(lists_named)
+        self.assertEqual(output, output_named)
+        # or just one.  it should still use the second's name
+        lists_named[0] = re.sub("^1=", "", lists_named[0])
+        output_named["set1"] = output_named["1"]
+        del output_named["1"]
+        output = tree.parse_lists(lists_named)
+        self.assertEqual(output, output_named)
+        # None should be equivalent to no lists given
+        self.assertEqual(tree.parse_lists(None), {})
+
+
+class TestParseColors(TestBase):
+
+    def test_parse_colors(self):
+        # implicit naming
+        color_texts = ["#ff0000", "#0000ff"]
+        colors_exp = {"set1": [255, 0, 0], "set2": [0, 0, 255]}
+        colors = tree.parse_colors(color_texts)
+        self.assertEqual(colors, colors_exp)
+        # explicit naming
+        color_texts = ["1=#ff0000", "2=#0000ff"]
+        colors_exp = {"1": [255, 0, 0], "2": [0, 0, 255]}
+        colors = tree.parse_colors(color_texts)
+        self.assertEqual(colors, colors_exp)
+        # just one name
+        color_texts = ["1=#ff0000", "#0000ff"]
+        colors_exp = {"1": [255, 0, 0], "set2": [0, 0, 255]}
+        colors = tree.parse_colors(color_texts)
+        self.assertEqual(colors, colors_exp)
+        # None should be equivalent to no colors given
+        self.assertEqual(tree.parse_colors(None), {})
+
+
+class TestLooksAligned(TestBase):
+
+    def test_looks_aligned(self):
+        self.assertFalse(tree.looks_aligned([
+            {"sequence_id": "seq1", "sequence": "ACG"},
+            {"sequence_id": "seq2", "sequence": "ACTG"},
+            ]))
+        self.assertTrue(tree.looks_aligned([
+            {"sequence_id": "seq1", "sequence": "ACTG"},
+            {"sequence_id": "seq2", "sequence": "ACTG"},
+            ]))
+        self.assertTrue(tree.looks_aligned([
+            {"sequence_id": "seq1", "sequence": "A-TG"},
+            {"sequence_id": "seq2", "sequence": "ACTG"},
+            ]))
+        # one sequence "looks aligned" I guess
+        self.assertTrue(tree.looks_aligned([
+            {"sequence_id": "seq1", "sequence": "ATG"},
+            ]))
+        # no sequences doesn't
+        self.assertFalse(tree.looks_aligned([]))
