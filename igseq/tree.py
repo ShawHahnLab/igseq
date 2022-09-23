@@ -173,6 +173,7 @@ def infer_tree_fmt(path):
     return FMT_EXT_MAP.get(ext)
 
 def run_fasttree(records):
+    """Run fasttree on a list of sequence records and return newick text"""
     if not records:
         raise util.IgSeqError("No seq records provided")
     # TODO -quiet unless -v was given via CLI
@@ -191,6 +192,7 @@ def load_newick_text(path):
         return f_in.read()
 
 def build_seq_sets(seq_ids, pattern=None, lists=None):
+    """Given a list of seq IDs, place each in one or more sets."""
     # mapping of set names to sets of seq IDs
     seq_sets = defaultdict(set)
     if pattern:
@@ -228,8 +230,12 @@ def make_seq_set_colors(seq_sets):
         seq_set_colors[set_name] = [random.randint(0, 255) for _ in range(3)]
     return seq_set_colors
 
-def merge_colors(colors, scale):
-    """Take an average of a list of colors and shift toward black."""
+def merge_colors(colors, scale=0):
+    """Take an average of a list of colors and shift toward black.
+
+    More colors results in a darker result, up to the integer value given for
+    scale.  If scale is less than the number of colors this scaling is skipped.
+    """
     result = [0, 0, 0]
     if not colors:
         return result
@@ -240,7 +246,10 @@ def merge_colors(colors, scale):
             result[idx] += color[idx]
     # not quite right, should rotate, really, not move directly toward the
     # middle... but it'll do for now
-    scaling = ((scale - len(colors))/scale)**0.3
+    if scale < len(colors):
+        scaling = 1
+    else:
+        scaling = ((scale - len(colors))/scale)**0.3
     for idx in range(3):
         result[idx] = result[idx] / len(colors)
         result[idx] = int(result[idx] * scaling)
@@ -249,7 +258,14 @@ def merge_colors(colors, scale):
 def color_str_to_trio(color_txt):
     """Convert hex color string to trio of 0:255 ints."""
     color_txt = color_txt.removeprefix("#")
-    color = [int(color_txt[idx:(idx+2)], 16) for idx in range(0, 6, 2)]
+    # e.g. "ff0000"
+    if len(color_txt) == 6:
+        color = [int(color_txt[idx:(idx+2)], 16) for idx in range(0, 6, 2)]
+    # e.g. "f00" = "ff0000"
+    elif len(color_txt) == 3:
+        color = [int(color_txt[idx:(idx+1)]*2, 16) for idx in range(0, 3)]
+    else:
+        raise ValueError
     return color
 
 def color_trio_to_str(color):
