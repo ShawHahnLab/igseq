@@ -16,6 +16,10 @@ one or more sets, as defined by a regular expression matching sequence IDs
 (-P) or explicit lists of sequence IDs via text files (-L).  Note that set
 membership is combined from all sources; seq1 matching set1 via the
 pattern-matching can also be listed via -L as a member of set2.
+
+Options defined per-set can optionally specify a set name, for example -L
+set1=path/list.txt or -C set1=#ff0000.  Unnamed sets will be named "set#" in
+the order they are encountered.
 """
 
 import re
@@ -76,7 +80,7 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
         raise util.IgSeqError(f"Can't use format {fmt_out_inf} for output")
 
     # Parse lists
-    lists = parse_lists(lists)
+    seq_sets = parse_lists(lists)
     if lists:
         LOGGER.info("parsed lists: %s", lists)
 
@@ -116,36 +120,47 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
             f_out.write(newick_text)
     elif fmt_out_inf == "nex":
         seq_ids = [rec["sequence_id"] for rec in records]
-        seq_sets = build_seq_sets(seq_ids, pattern, lists)
-        seq_colors = color_seqs(seq_ids, seq_sets, colors)
+        seq_sets_combo = build_seq_sets(seq_ids, pattern, seq_sets)
+        seq_colors = color_seqs(seq_ids, seq_sets_combo, colors)
         save_nexus(seq_colors, newick_text, path_out)
     else:
         raise NotImplementedError("image output not yet implemented")
 
 def parse_lists(lists):
+    """Parse a list of filenames into a dictonary of sequence sets."""
     lists = lists or []
-    # TODO allow missing name
-    lists = [seq_list.split("=", 1) for seq_list in lists]
-    lists = {p[0]: load_seq_list(p[1]) for p in lists}
-    return lists
+    lists = [str(seq_list).split("=", 1) for seq_list in lists]
+    def load_seq_list(idx, pair):
+        try:
+            key, path = pair
+        except ValueError:
+            key = f"set{idx+1}"
+            path = pair[0]
+        seq_set = set()
+        with open(path) as f_in:
+            for line in f_in:
+                seq_set.add(line.strip())
+        return key, seq_set
+    seq_sets = dict(load_seq_list(idx, p) for idx, p in enumerate(lists))
+    return seq_sets
 
 def parse_colors(color_texts):
     """Parse list of "setname=colorcode" strings into dictionary of RGB tuples."""
-    colors = color_texts or []
-    # TODO allow missing name
-    colors = [color.split("=", 1) for color in colors]
-    colors = {p[0]: color_str_to_trio(p[1]) for p in colors}
+    color_texts = color_texts or []
+    color_texts = [str(txt).split("=", 1) for txt in color_texts]
+    def parse_color(idx, pair):
+        try:
+            key, colortxt = pair
+        except ValueError:
+            key = f"set{idx+1}"
+            colortxt = pair[0]
+        color = color_str_to_trio(colortxt)
+        return key, color
+    colors = dict(parse_color(idx, p) for idx, p in enumerate(color_texts))
     return colors
 
-def load_seq_list(path):
-    seq_list = []
-    with open(path) as f_in:
-        for line in f_in:
-            seq_list.append(line.strip())
-    return seq_list
-
 def looks_aligned(records):
-    # all the same length looks aligned, multiple lengths doesn't.
+    """True if one or more records are all the same length, False otherwise."""
     lengths = {len(rec["sequence"]) for rec in records}
     return len(lengths) == 1
 
