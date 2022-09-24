@@ -28,6 +28,8 @@ import random
 from pathlib import Path
 from subprocess import Popen, PIPE
 from collections import defaultdict
+import newick
+from Bio.Nexus.Nexus import Nexus
 from . import util
 from . import record
 from . import msa
@@ -77,12 +79,14 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
     if not fmt_out:
         LOGGER.info("inferred output format: %s", fmt_out_inf)
     if fmt_out_inf not in FMT_OUT:
+        if not fmt_out_inf:
+            raise util.IgSeqError(f"Unrecognized output format for {path_out}")
         raise util.IgSeqError(f"Can't use format {fmt_out_inf} for output")
 
     # Parse lists
     seq_sets = parse_lists(lists)
-    if lists:
-        LOGGER.info("parsed lists: %s", lists)
+    if seq_sets:
+        LOGGER.info("parsed lists: %s", seq_sets)
 
     # Parse colors
     colors = parse_colors(colors)
@@ -106,25 +110,37 @@ def tree(path_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=Non
             LOGGER.info("aligning records")
             records = msa.run_muscle(records)
         newick_text = run_fasttree(records)
+        newick_obj = newick.loads(newick_text)[0]
     else:
         # tree input
         if fmt_in_inf == "newick":
-            raise NotImplementedError("Newick input not yet implemented")
-            newick_text = load_newick_text(path_in)
+            newick_obj = newick.read(path_in)[0]
         else:
-            raise NotImplementedError("NEXUS input not yet implemented")
+            newick_obj = load_newick_from_nexus(path_in)
+            if not newick_obj:
+                raise util.IgSeqError("No tree found in NEXUS file {path_in}")
 
     # Handle output
     if fmt_out_inf == "newick":
         with open(path_out, "wt") as f_out:
-            f_out.write(newick_text)
+            newick.dump(newick_obj, f_out)
+            f_out.write("\n")
     elif fmt_out_inf == "nex":
-        seq_ids = [rec["sequence_id"] for rec in records]
+        seq_ids = all_node_ids(newick_obj)
         seq_sets_combo = build_seq_sets(seq_ids, pattern, seq_sets)
         seq_colors = color_seqs(seq_ids, seq_sets_combo, colors)
-        save_nexus(seq_colors, newick_text, path_out)
+        save_nexus(seq_colors, newick_obj, path_out)
     else:
         raise NotImplementedError("image output not yet implemented")
+
+def all_node_ids(tree_obj):
+    """Get a set of all non-empty node IDs in a tree object."""
+    node_ids = set()
+    for child in tree_obj.descendants:
+        node_ids |= all_node_ids(child)
+    if tree_obj.name:
+        node_ids.add(tree_obj.name)
+    return node_ids
 
 def parse_lists(lists):
     """Parse a list of filenames into a dictonary of sequence sets."""
@@ -172,6 +188,18 @@ def infer_tree_fmt(path):
     ext = path.suffix.lower()
     return FMT_EXT_MAP.get(ext)
 
+def load_newick_from_nexus(path_in):
+    nexus_obj = Nexus()
+    nexus_obj.read(path_in)
+    for obj in nexus_obj.structured:
+        if obj.title == "trees":
+            for cmd in obj.commandlines:
+                if cmd.command == "tree":
+                    newick_text = re.sub("^[^=]+= *", "", cmd.options)
+                    newick_obj = newick.loads(newick_text)[0]
+                    return newick_obj
+    return None
+
 def run_fasttree(records):
     """Run fasttree on a list of sequence records and return newick text"""
     if not records:
@@ -186,10 +214,6 @@ def run_fasttree(records):
         proc.stdin.close()
         treedata = proc.stdout.read()
     return treedata
-
-def load_newick_text(path):
-    with open(path) as f_in:
-        return f_in.read()
 
 def build_seq_sets(seq_ids, pattern=None, lists=None):
     """Given a list of seq IDs, place each in one or more sets."""
@@ -272,13 +296,15 @@ def color_trio_to_str(color):
     """Convert trio of 0:255 ints to hex color string."""
     return "#" + "".join([f"{c:02x}" for c in color])
 
-def save_nexus(seq_colors, newick_text, path):
+def save_nexus(seq_colors, newick_obj, path):
+    newick_text = newick.dumps(newick_obj)
     with open(path, "wt") as f_out:
         f_out.write("#NEXUS\n")
         f_out.write("begin taxa;\n")
         f_out.write(f"dimensions ntax={len(seq_colors)};\n")
         f_out.write("taxlabels\n")
-        for seq_id, seq_color in seq_colors.items():
+        seq_color_pairs = sorted([[k, v] for k, v in seq_colors.items()])
+        for seq_id, seq_color in seq_color_pairs:
             color_txt = color_trio_to_str(seq_color)
             f_out.write(f"'{seq_id}'[&!color={color_txt}]\n")
         f_out.write(";\n")
@@ -286,6 +312,6 @@ def save_nexus(seq_colors, newick_text, path):
         f_out.write("\n")
         # TODO mark rooted/unrooted?
         f_out.write("begin trees;\n")
-        f_out.write(f"tree tree_1 = {newick_text}\n")
+        f_out.write(f"tree tree_1 = {newick_text}\n\n")
         f_out.write("end;\n")
         f_out.write("\n")

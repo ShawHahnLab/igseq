@@ -2,6 +2,7 @@ import re
 from abc import ABC
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from itertools import product
 import json
 from igseq import msa
 from igseq import tree
@@ -16,49 +17,34 @@ class CommonTreeTests(ABC):
 
     def setUp(self):
         super().setUp()
-        with RecordReader(self.path/"input.fasta") as reader:
+        with RecordReader(self.path/"seqs.fasta") as reader:
             self.records_in = list(reader)
-        with RecordReader(self.path/"input.aln.fasta") as reader:
+        with RecordReader(self.path/"seqs.aln.fasta") as reader:
             self.records_in_aln = list(reader)
-        with open(self.path/"output.tree") as f_in:
+        with open(self.path/"tree.tree") as f_in:
             self.tree_newick_text_exp = f_in.read()
-        with open(self.path/"output.nex") as f_in:
+        with open(self.path/"tree.nex") as f_in:
             self.tree_nexus_text_exp = f_in.read()
         self.tree_newick_text = None
         self.tree_nexus_text = None
 
-    def test_tree(self):
-        """Test tree with unaligned file input and newick output."""
-        with TemporaryDirectory() as tmpdir:
-            stdout, stderr = self.redirect_streams(lambda:
-                tree.tree(self.path/"input.fasta", Path(tmpdir)/"output.tree"))
-            self.assertEqual("", stdout)
-            self.assertTrue(stderr.startswith("\nmuscle 5"))
-            self.assertTxtsMatch(
-                self.path/"output.tree",
-                Path(tmpdir)/"output.tree")
-
-    def test_tree_aln(self):
-        """Test tree with aligned file input and newick output."""
-        with TemporaryDirectory() as tmpdir:
-            stdout, stderr = self.redirect_streams(lambda:
-                tree.tree(self.path/"input.aln.fasta", Path(tmpdir)/"output.tree"))
-            self.assertEqual("", stdout)
-            self.assertEqual("", stderr)
-            self.assertTxtsMatch(
-                self.path/"output.tree",
-                Path(tmpdir)/"output.tree")
-
-    def test_tree_aln_nexus(self):
-        """Test tree with aligned file input and NEXUS output."""
-        with TemporaryDirectory() as tmpdir:
-            stdout, stderr = self.redirect_streams(lambda:
-                tree.tree(self.path/"input.aln.fasta", Path(tmpdir)/"output.nex"))
-            self.assertEqual("", stdout)
-            self.assertEqual("", stderr)
-            self.assertTxtsMatch(
-                self.path/"output.nex",
-                Path(tmpdir)/"output.nex")
+    def test_tree_conversions(self):
+        """Test all tree input/output combinations"""
+        paths_from = ["seqs.fasta", "seqs.aln.fasta", "tree.tree", "tree.nex"]
+        paths_to = ["tree.tree", "tree.nex"]
+        # all supported combinations
+        for path_from, path_to in product(paths_from, paths_to):
+            with self.subTest(path_from=path_from, path_to=path_to):
+                with TemporaryDirectory() as tmpdir:
+                    stdout, stderr = self.redirect_streams(lambda:
+                        tree.tree(self.path/path_from, Path(tmpdir)/path_to))
+                    self.assertEqual("", stdout)
+                    if path_from == "seqs.fasta":
+                        # special case, we see muscle run for unaligned sequences
+                        self.assertTrue(stderr.startswith("\nmuscle 5"))
+                    else:
+                        self.assertEqual("", stderr)
+                    self.assertTxtsMatch(self.path/path_to, Path(tmpdir)/path_to)
 
     def test_run_fasttree_aln(self):
         """Test run_fasttree with aligned record inputs and newick output."""
@@ -101,14 +87,14 @@ class TestTreeEmpty(TestBase):
 
     def setUp(self):
         super().setUp()
-        with RecordReader(self.path/"input.fasta") as reader:
+        with RecordReader(self.path/"seqs.fasta") as reader:
             self.records_in = list(reader)
 
     def test_tree(self):
         """Test tree with empty file input and newick output."""
         with self.assertRaises(IgSeqError):
             with TemporaryDirectory() as tmpdir:
-                tree.tree(self.path/"input.fasta", Path(tmpdir)/"output.tree")
+                tree.tree(self.path/"seqs.fasta", Path(tmpdir)/"tree.tree")
 
     def test_run_fasttree(self):
         """Test run_fasttree with zero records."""

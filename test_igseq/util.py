@@ -51,6 +51,9 @@ class MockPopen(Mock):
         # returncode is None until a process ends
         self.returncode = None
         self.__exit__.side_effect = self.exit
+        self.reset_streams()
+
+    def reset_streams(self):
         self.stdin = StringIO()
         self.stderr = StringIO(self.texts["stderr"])
         self.stdin.close = Mock(side_effect=self.stdin_close)
@@ -71,6 +74,9 @@ class MockPopen(Mock):
         # when exiting, Popen() waits for the process so it should now have an
         # exit code
         self.returncode = 0
+        # resetting stdin/stdout/stderr means we can call it again, though
+        # still only with the same expected use
+        self.reset_streams()
 
     def stdin_close(self, *_, **__):
         # This mock gives output assuming this particular input, so check for
