@@ -57,5 +57,5 @@ def run_muscle(records):
     # sort according to input records
     record_lut = {rec["sequence_id"]: rec for rec in records_out}
     seqids = [rec["sequence_id"] for rec in records]
-    records_out = [record_lut[seqid] for seqid in seqids]
+    records_out = [record_lut[seqid] for seqid in seqids if seqid in record_lut]
     return records_out
