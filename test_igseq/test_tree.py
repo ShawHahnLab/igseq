@@ -102,6 +102,61 @@ class TestTreeEmpty(TestBase):
             tree.run_fasttree([])
 
 
+class TestTreeMulti(TestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.records_in = []
+        with RecordReader(self.path/"seqs.combo.fasta") as reader:
+            self.records_in = list(reader)
+        with RecordReader(self.path/"seqs.aln.fasta") as reader:
+            self.records_in_aln = list(reader)
+        with open(self.path/"tree.tree") as f_in:
+            self.tree_newick_text_exp = f_in.read()
+        with open(self.path/"tree.nex") as f_in:
+            self.tree_nexus_text_exp = f_in.read()
+        self.tree_newick_text = None
+        self.tree_nexus_text = None
+        txt_in = [f">{rec['sequence_id']}\n{rec['sequence']}" for rec in self.records_in]
+        txt_in = "\n".join(txt_in) + "\n"
+        txt_aln = [f">{rec['sequence_id']}\n{rec['sequence']}" for rec in self.records_in_aln]
+        txt_aln = "\n".join(txt_aln) + "\n"
+        msa.Popen = MockPopenMuscle(orig=msa.Popen, stdin=txt_in, stdout=txt_aln)
+        tree.Popen = MockPopen(orig=tree.Popen, stdin=txt_aln, stdout=self.tree_newick_text_exp)
+
+    def tearDown(self):
+        super().tearDown()
+        msa.Popen = msa.Popen.orig
+        tree.Popen = tree.Popen.orig
+
+    def test_tree_multi_input(self):
+        # a special case: multiple FASTA inputs will allow implicit set
+        # membership based on which files have which sequences
+        with TemporaryDirectory() as tmpdir:
+            stdout, stderr = self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.fasta", self.path/"seqs2.fasta"],
+                    Path(tmpdir)/"tree.tree"))
+            self.assertTxtsMatch(self.path/"tree.tree", Path(tmpdir)/"tree.tree")
+        with TemporaryDirectory() as tmpdir:
+            stdout, stderr = self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.fasta", self.path/"seqs2.fasta"],
+                    Path(tmpdir)/"tree.nex"))
+            self.assertTxtsMatch(self.path/"tree.nex", Path(tmpdir)/"tree.nex")
+
+
+class TestTreeDups(TestBase):
+
+    def test_tree_duplicates(self):
+        # completely duplicated sequences will be quietly skipped,
+        # but it should refuse to allow different sequences with the same
+        # sequence ID
+        with TemporaryDirectory() as tmpdir:
+            with self.assertRaises(IgSeqError):
+                tree.tree(self.path/"seqs.fasta", Path(tmpdir)/"tree.tree")
+
+
 class TestParseLists(TestBase):
 
     def setUp(self):
@@ -174,57 +229,3 @@ class TestLooksAligned(TestBase):
             ]))
         # no sequences doesn't
         self.assertFalse(tree.looks_aligned([]))
-
-
-class TestColors(TestBase):
-    """Tests for color-related helper functions."""
-
-    TRIOS = [
-        ([255,   0,   0], "#ff0000"),
-        ([0,     0,   0], "#000000"),
-        ([0,   136,   0], "#008800"),
-        ([255, 255, 255], "#ffffff"),
-        ]
-
-    TEXTS = [
-        ("#ff0000", [255, 0, 0]),
-        ("#FF0000", [255, 0, 0]),
-        ("FF0000",  [255, 0, 0]),
-        ("#008800", [0, 136, 0]),
-        ("#f00",    [255, 0, 0]),
-        ("#F00",    [255, 0, 0]),
-        ("#080",    [0, 136, 0]),
-        ("f00",     [255, 0, 0]),
-        ]
-
-    SCALES = [
-        # Two colors averaged, no scaling
-        (([[255, 0, 0], [0, 0, 255]], 0), [127, 0, 127]),
-        # Two colors averaged, of 2 total, scales to black
-        (([[255, 0, 0], [0, 0, 255]], 2), [0, 0, 0]),
-        # one color of two, stays the same
-        (([[255, 0, 0]], 2), [255, 0, 0]),
-        # no colors = black by definition
-        (([], 0), [0, 0, 0]),
-        (([], 2), [0, 0, 0]),
-        # two colors of three, averaged + scaled
-        (([[255, 0, 0], [0, 0, 255]], 3), [91, 0, 91]),
-        ]
-
-    def test_merge_colors(self):
-        """Test blending colors together."""
-        for case in self.__class__.SCALES:
-            with self.subTest(case=case):
-                self.assertEqual(tree.merge_colors(case[0][0], case[0][1]), case[1])
-
-    def test_color_str_to_trio(self):
-        """Test converting color text codes to integer trios."""
-        for case in self.__class__.TEXTS:
-            with self.subTest(case=case):
-                self.assertEqual(tree.color_str_to_trio(case[0]), case[1])
-
-    def test_color_trio_to_str(self):
-        """Test converting integer trios to color text codes."""
-        for case in self.__class__.TRIOS:
-            with self.subTest(case=case):
-                self.assertEqual(tree.color_trio_to_str(case[0]), case[1])

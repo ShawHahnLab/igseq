@@ -255,7 +255,7 @@ def _main_msa(args):
 def _main_tree(args):
     colmap = args_to_colmap(args)
     tree.tree(
-        path_in=args.input,
+        paths_in=args.input,
         path_out=args.output,
         fmt_in=args.input_format,
         fmt_out=args.output_format,
@@ -573,7 +573,7 @@ def __setup_arg_parser():
     p_msa.set_defaults(func=_main_msa)
 
     __add_common_args(p_tree)
-    p_tree.add_argument("input",
+    p_tree.add_argument("input", nargs="+",
         help="input file path, or a literal '-' for standard input")
     p_tree.add_argument("output",
         help="output file path, or a literal '-' for standard output")
