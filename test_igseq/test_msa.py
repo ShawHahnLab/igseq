@@ -56,12 +56,26 @@ class CommonMSATests(ABC):
             self.assertTxtsMatch(
                 self.path/"output.fasta",
                 Path(tmpdir)/"output.fasta")
+        # check idempotence: aligning output just gives the same.
+        with TemporaryDirectory() as tmpdir:
+            stdout, stderr = self.redirect_streams(lambda:
+                msa.msa(self.path/"output.fasta", Path(tmpdir)/"output.fasta"))
+            self.assertEqual("", stdout)
+            self.assertTrue(stderr.startswith("\nmuscle 5"))
+            self.assertTxtsMatch(
+                self.path/"output.fasta",
+                Path(tmpdir)/"output.fasta")
 
     def test_run_muscle(self):
         """Test muscle alignment with record inputs and outputs."""
         def do_muscle(self, recs):
             self.records_out = msa.run_muscle(recs)
         stdout, stderr = self.redirect_streams(lambda: do_muscle(self, self.records_in))
+        self.assertEqual("", stdout)
+        self.assertTrue(stderr.startswith("\nmuscle 5"))
+        self.assertEqual(self.records_out, self.records_out_exp)
+        # idempotence again
+        stdout, stderr = self.redirect_streams(lambda: do_muscle(self, self.records_out_exp))
         self.assertEqual("", stdout)
         self.assertTrue(stderr.startswith("\nmuscle 5"))
         self.assertEqual(self.records_out, self.records_out_exp)
