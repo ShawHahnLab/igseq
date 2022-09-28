@@ -78,10 +78,9 @@ def main(arglist=None):
         try:
             if args_extra:
                 # If there were unparsed arguments, see if we're in one of the
-                # commands (currently just igblast) that can take extra
-                # pass-through arguments.  If so pass them along, but if not,
-                # error out.
-                if args.func in [_main_igblast]:
+                # commands that can take extra pass-through arguments.  If so
+                # pass them along, but if not, error out.
+                if args.func in [_main_igblast, _main_getreads]:
                     args.func(args, args_extra)
                 else:
                     parser.parse_args(args_extra)
@@ -112,13 +111,14 @@ def main(arglist=None):
         except BrokenPipeError:
             os.dup2(devnull, sys.stderr.fileno())
 
-def _main_getreads(args):
+def _main_getreads(args, extra_args=None):
     if args.no_counts:
         args.countsfile = None
     getreads.getreads(
         path_input=args.input,
         dir_out=args.outdir,
         path_counts=args.countsfile,
+        extra_args=extra_args,
         threads_load=args.threads_load,
         threads_proc=args.threads,
         dry_run=args.dry_run)
