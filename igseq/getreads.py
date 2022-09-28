@@ -160,7 +160,7 @@ def _run_bcl2fastq(args, extra_args=None):
         # make sure none of the extra arguments, if there are any, clash with
         # the ones we've defined above.
         args_dashes = {arg for arg in args if str(arg).startswith("-")}
-        shared = args_dashes & extra_args
+        shared = args_dashes & set(extra_args)
         if shared:
             raise util.IgSeqError(f"bcl2fastq arg collision from extra arguments: {shared}")
         args += extra_args
