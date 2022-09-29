@@ -12,7 +12,8 @@ Tree formats:
 
 Multiple input files are allowed if all are FASTA.  In this case sequences will
 implicitly be grouped into sets based on which sequences are present in which
-input files.
+input files.  In this case sequences with the same ID must share identical
+sequence content.
 
 Nodes and branches can be color-coded according to each node's membership in
 one or more sets, as defined by a regular expression matching sequence IDs
@@ -77,22 +78,30 @@ def tree(paths_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=No
         # doesn't allow duplicates.
         seen = dict()
         records = []
+        if len(paths_in_parsed) > 1 and aligned is not False:
+            # If the input is multiple FASTA files, require alignment, and
+            # disregard any existing gaps while reading in seqs below.
+            LOGGER.info("requiring alignment for multi-FASTA input")
+            aligned = False
         for set_name, path_in in paths_in_parsed.items():
             if set_name not in seq_sets and len(paths_in_parsed) > 1:
                 seq_sets[set_name] = set()
             with record.RecordReader(path_in, fmt_in_inf, colmap, dry_run=dry_run) as reader:
                 for rec in reader:
+                    seq = rec["sequence"].upper()
                     if len(paths_in_parsed) > 1:
+                        seq = re.sub("-", "", seq)
                         seq_sets[set_name].add(rec["sequence_id"])
                     if rec["sequence_id"] in seen:
                         # if we've seen this seq ID before, is the sequence
                         # the same?  If not complain loudly
-                        if rec["sequence"] != seen[rec["sequence_id"]]:
+                        if seq != seen[rec["sequence_id"]]:
                             raise util.IgSeqError(
                                 "Duplicate sequence IDs encountered " \
                                 f"for different sequences from {paths_in}")
                     else:
-                        seen[rec["sequence_id"]] = rec["sequence"]
+                        seen[rec["sequence_id"]] = seq
+                        rec["sequence"] = seq
                         records.append(rec)
         # I've written run_muscle so it'll just pass through an empty set of
         # records with a warning, but even if we did that, fasttree wouldn't
