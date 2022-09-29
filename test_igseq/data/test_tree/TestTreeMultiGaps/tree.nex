@@ -1,0 +1,16 @@
+#NEXUS
+begin taxa;
+dimensions ntax=4;
+taxlabels
+'seq1'[&!color=#000000]
+'seq2'[&!color=#be4229]
+'seq3'[&!color=#be4229]
+'seq4'[&!color=#d186d7]
+;
+end;
+
+begin trees;
+tree tree_1 = (seq3:0.034235215,seq4:0.034235214,(seq1:0.000000005,seq2:0.000000005)0.905:0.000000005);
+
+end;
+

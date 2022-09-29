@@ -146,6 +146,13 @@ class TestTreeMulti(TestBase):
             self.assertTxtsMatch(self.path/"tree.nex", Path(tmpdir)/"tree.nex")
 
 
+class TestTreeMultiGaps(TestTreeMulti):
+    """Same as TestTreeMulti, but with gaps in the input sequences
+
+    Gaps should always be disregarded with multiple input FASTAs.
+    """
+
+
 class TestTreeDups(TestBase):
 
     def test_tree_duplicates(self):
