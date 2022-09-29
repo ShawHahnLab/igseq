@@ -4,11 +4,13 @@
 
 ### Added
 
+ * `tree` command for creating and formatting phylogenetic trees ([#44])
  * support for additional arguments for `getreads` command passed through to
    bcl2fastq ([#43])
  * `msa` command for building multiple sequence alignments with
    [MUSCLE](https://drive5.com/muscle5/) ([#41])
 
+[#44]: https://github.com/ShawHahnLab/igseq/pull/44
 [#43]: https://github.com/ShawHahnLab/igseq/pull/43
 [#41]: https://github.com/ShawHahnLab/igseq/pull/41
 
