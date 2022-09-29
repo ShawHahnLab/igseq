@@ -12,8 +12,8 @@ Tree formats:
 
 Multiple input files are allowed if all are FASTA.  In this case sequences will
 implicitly be grouped into sets based on which sequences are present in which
-input files.  In this case sequences with the same ID must share identical
-sequence content.
+input files.  Sequences with the same ID must share identical sequence content,
+and gaps are removed and the sequences are then aligned.
 
 Nodes and branches can be color-coded according to each node's membership in
 one or more sets, as defined by a regular expression matching sequence IDs
