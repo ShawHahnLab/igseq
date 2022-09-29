@@ -21,6 +21,10 @@ igseq tree $FASTA example.nex
 # explicitly.
 igseq tree $FASTA -P '^wk[0-9]+' example_pattern.nex
 
+# We can also use a newick tree file (like created above) as input and create a
+# color-coded NEXUS file from that.
+igseq tree example.tree -P '^wk[0-9]+' example_pattern_from_newick.nex
+
 # Or, define sets by lists of sequence IDs.  (Here these are "set1" and
 # "set2"; they could also be named like "-L wk16=wk16.txt -L wk20=wk20.txt".)
 igseq tree $FASTA -L $WK16 -L $WK20 example_lists.nex
