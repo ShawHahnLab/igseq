@@ -262,7 +262,7 @@ def _main_tree(args):
         aligned=args.aligned,
         pattern=args.set_pattern,
         lists=args.set_list,
-        colors=args.set_colors,
+        colors=args.set_color,
         colmap=colmap,
         dry_run=args.dry_run)
 
@@ -595,10 +595,10 @@ def __setup_arg_parser():
         "If a capture group is given, only that text is used to define the set names.")
     p_tree.add_argument("--set-list", "-L", action="append",
         help="filename containing a list of sequence IDs for a set.  "
-        "This can be given multiple times.")
-    p_tree.add_argument("--set-colors", "-C", action="append",
-        help="setname=colorcode, like set1=#ff0000, to override set colors. "
-        "This can be given multiple times.")
+        "This can be given multiple times for multiple set/filename pairs.")
+    p_tree.add_argument("--set-color", "-C", action="append",
+        help="setname=colorcode, like set1=#ff0000, to override automatic set colors. "
+        "This can be given multiple times for multiple set/color pairs.")
     p_tree.set_defaults(func=_main_tree)
 
     return parser
