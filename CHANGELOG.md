@@ -4,6 +4,22 @@
 
 ### Added
 
+ * `tree` command for creating and formatting phylogenetic trees ([#44])
+ * support for additional arguments for `getreads` command passed through to
+   bcl2fastq ([#43])
+ * `msa` command for building multiple sequence alignments with
+   [MUSCLE](https://drive5.com/muscle5/) ([#41])
+
+[#44]: https://github.com/ShawHahnLab/igseq/pull/44
+[#43]: https://github.com/ShawHahnLab/igseq/pull/43
+[#41]: https://github.com/ShawHahnLab/igseq/pull/41
+
+## 0.4.0 - 2022-09-17
+
+### Added
+
+ * Automatic usage of all available references for a given species in `igblast`
+   command ([#39])
  * `identity` command for calculating pairwise identity between arbitrary
    queries and references ([#31], [#37])
  * Support for showing basic tree topology for Newick-format files in `show`
@@ -15,6 +31,7 @@
  * broken pipes (such as from `igseq something | something else`) are now
    handled gracefully ([#30])
 
+[#39]: https://github.com/ShawHahnLab/igseq/pull/39
 [#37]: https://github.com/ShawHahnLab/igseq/pull/37
 [#35]: https://github.com/ShawHahnLab/igseq/pull/35
 [#33]: https://github.com/ShawHahnLab/igseq/pull/33
