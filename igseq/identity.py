@@ -26,7 +26,7 @@ def identity(path_in, path_out, path_ref=None, fmt_in=None, fmt_in_ref=None, col
     LOGGER.info("given ref path: %s", path_ref)
     LOGGER.info("given query path: %s", path_in)
     LOGGER.info("given output path: %s", path_out)
-    LOGGER.info("given input format: %s", path_out)
+    LOGGER.info("given input format: %s", fmt_in)
     LOGGER.info("given colmap: %s", colmap)
     refs = None
     fmt_ref = ""
