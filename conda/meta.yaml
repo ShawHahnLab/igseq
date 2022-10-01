@@ -51,6 +51,7 @@ requirements:
     - pear>=0.9.6,<1
     - igblast>=1.19,<2
     - muscle>=5.1,<6
+    - fasttree>=2.1,<3
 
 test:
   source_files:

@@ -36,6 +36,10 @@ def msa(path_in, path_out, fmt_in=None, fmt_out=None, colmap=None, dry_run=False
 
 def run_muscle(records):
     """Align a set of records with MUSCLE."""
+    # muscle crashes with empty input, so we'll just do a noop for that case
+    if not records:
+        LOGGER.warning("no records provided to align; skipping MUSCLE")
+        return records
     args = ["muscle", "-align", "/dev/stdin", "-output", "/dev/stdout"]
     with Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True) as proc:
         with RecordWriter(proc.stdin, "fa") as writer:
@@ -50,4 +54,8 @@ def run_muscle(records):
         raise IgSeqError("MUSCLE crashed")
     with RecordReader(StringIO(msa_txt), "fa") as reader:
         records_out = list(reader)
+    # sort according to input records
+    record_lut = {rec["sequence_id"]: rec for rec in records_out}
+    seqids = [rec["sequence_id"] for rec in records]
+    records_out = [record_lut[seqid] for seqid in seqids if seqid in record_lut]
     return records_out
