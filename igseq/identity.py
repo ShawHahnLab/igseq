@@ -58,7 +58,7 @@ def identity(path_in, path_out, path_ref=None, fmt_in=None, fmt_in_ref=None, col
                     record[reader.colmap["sequence"]],
                     ref[reader.colmap["sequence"]])
                 writer.write({
-                    "query": record["sequence_id"],
+                    "query": record[reader.colmap["sequence_id"]],
                     "ref": ref["sequence_id"],
                     "identity": score})
 
