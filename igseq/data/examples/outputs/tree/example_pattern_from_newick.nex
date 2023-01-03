@@ -3,12 +3,12 @@ begin taxa;
 dimensions ntax=7;
 taxlabels
 'somethingelse'[&!color=#000000]
-'wk16-001'[&!color=#d186d7]
-'wk16-002'[&!color=#d186d7]
-'wk16-003'[&!color=#d186d7]
-'wk20-001'[&!color=#be4229]
-'wk20-002'[&!color=#be4229]
-'wk20-003'[&!color=#be4229]
+'wk16-001'[&!color=#be4229]
+'wk16-002'[&!color=#be4229]
+'wk16-003'[&!color=#be4229]
+'wk20-001'[&!color=#d186d7]
+'wk20-002'[&!color=#d186d7]
+'wk20-003'[&!color=#d186d7]
 ;
 end;
 
