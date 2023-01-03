@@ -4,6 +4,8 @@
 
 ### Added
 
+ * `summarize` command will automatically use all available references for a
+   given species if a species is given but no references ([#50])
  * `tree` command for creating and formatting phylogenetic trees ([#44])
  * support for additional arguments for `getreads` command passed through to
    bcl2fastq ([#43])
@@ -15,6 +17,7 @@
  * `identity` command now uses a custom sequence ID column if one is given
    ([#49])
 
+[#50]: https://github.com/ShawHahnLab/igseq/pull/50
 [#49]: https://github.com/ShawHahnLab/igseq/pull/49
 [#44]: https://github.com/ShawHahnLab/igseq/pull/44
 [#43]: https://github.com/ShawHahnLab/igseq/pull/43

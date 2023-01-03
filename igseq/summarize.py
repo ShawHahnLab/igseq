@@ -24,6 +24,11 @@ def summarize(ref_paths, query, output=None, showtxt=None, species=None, fmt_in=
     LOGGER.info("given input format: %s", fmt_in)
     LOGGER.info("given colmap: %s", colmap)
     LOGGER.info("given threads: %s", threads)
+    if species and not ref_paths:
+        # If only species is given, default to using all available reference
+        # sets for that species
+        ref_paths = [igblast.fuzzy_species_match(species)]
+        LOGGER.info("inferred ref path: %s", ref_paths[0])
     # if not specified, show text when not saving output
     if showtxt is None:
         showtxt = not output

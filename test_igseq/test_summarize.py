@@ -46,3 +46,22 @@ class TestSummarizeLive(TestBase, TestLive):
         with open(self.path/"output/stdout_ref_rhesus.txt") as f_in:
             stdout_exp = f_in.read()
         self.assertEqual(stdout_exp, stdout)
+
+    def test_detect_ref(self):
+        """Test that appropriate reference is selected based on species when needed."""
+        # (this is all equivalent to the corresponding test for igblast.)
+        # Should be able to infer ref from exact species name or synonym
+        with self.assertLogs(level="INFO") as log_cm:
+            summarize.summarize(None, "-", species="rhesus", dry_run=True)
+            self.assertTrue(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        with self.assertLogs(level="INFO") as log_cm:
+            summarize.summarize(None, "-", species="rhesus_monkey", dry_run=True)
+            self.assertTrue(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        # Shouldn't infer ref when explicitly given
+        with self.assertLogs(level="INFO") as log_cm:
+            summarize.summarize(["rhesus"], "-", species="rhesus", dry_run=True)
+            self.assertFalse(any("inferred ref path: rhesus" in msg for msg in log_cm.output))
+        # Should still catch unknown names
+        with self.assertRaises(IgSeqError) as err_cm:
+            summarize.summarize(None, "-", species="unknown", dry_run=True)
+            self.assertIn("species not recognized", err_cm.exception.message)
