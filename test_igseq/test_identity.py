@@ -103,9 +103,9 @@ class TestIdentityTabular(TestBase):
 
     def test_identity_columns(self):
         """Test using different columns from input."""
-        # Here a CSV query and CSV ref can give CSV output
-        # the defaults are the same as for convert() so sequence_id and
-        # sequence columns will be used.
+        # Here a CSV query and CSV ref can give CSV output.
+        # The defaults are the same as for convert() so sequence_id and
+        # sequence columns will be used unless overridden.
         with TemporaryDirectory() as tmpdir:
             identity(
                 self.path/"input_query.csv",
@@ -113,6 +113,13 @@ class TestIdentityTabular(TestBase):
                 self.path/"input_ref.csv",
                 colmap={"sequence": "sequence2"})
             self.assertTxtsMatch(self.path/"output_col2.csv", Path(tmpdir)/"output.csv")
+        with TemporaryDirectory() as tmpdir:
+            identity(
+                self.path/"input_query.csv",
+                Path(tmpdir)/"output.csv",
+                self.path/"input_ref.csv",
+                colmap={"sequence_id": "sequence_id2"})
+            self.assertTxtsMatch(self.path/"output_col3.csv", Path(tmpdir)/"output.csv")
 
     def test_identity_single(self):
         """Identity with implicit ref via query."""
