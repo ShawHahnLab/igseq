@@ -10,6 +10,12 @@
  * `msa` command for building multiple sequence alignments with
    [MUSCLE](https://drive5.com/muscle5/) ([#41])
 
+### Fixed
+
+ * `identity` command now uses a custom sequence ID column if one is given
+   ([#49])
+
+[#49]: https://github.com/ShawHahnLab/igseq/pull/49
 [#44]: https://github.com/ShawHahnLab/igseq/pull/44
 [#43]: https://github.com/ShawHahnLab/igseq/pull/43
 [#41]: https://github.com/ShawHahnLab/igseq/pull/41
