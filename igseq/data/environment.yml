@@ -6,10 +6,10 @@ channels:
   - defaults
 dependencies:
   - python>=3.9.7,<4
-  - biopython>=1.79,<2
+  - biopython>=1.80,<2
   - python-newick>=1.3.2,<2
   - bwa>=0.7.17,<0.8
-  - samtools>=1.15,<2
+  - samtools>=1.16,<2
   - cutadapt>=3.7,<4
   - pear>=0.9.6,<1
   - igblast>=1.19,<2
