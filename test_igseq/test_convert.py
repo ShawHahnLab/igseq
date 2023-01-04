@@ -1,4 +1,5 @@
 import subprocess
+from unittest import expectedFailure
 from gzip import open as gzopen
 from io import BytesIO
 from pathlib import Path
@@ -284,6 +285,27 @@ class TestConvert(TestBase):
             self.assertTxtsMatch(
                 self.path/"unwrapped_quals.tsv",
                 Path(tmpdir)/"unwrapped_quals.tsv")
+
+
+class TestConvertDesc(TestConvert):
+    """Test with sequence descriptions (not just ID)"""
+
+
+class TestConvertPathological(TestBase):
+    """Test with strange sequence description lines"""
+
+    @expectedFailure
+    def test_convert_fa_fa(self):
+        """Test converting fasta to fasta.
+
+        These *should* make output identical to the input, but Biopython subtly
+        munges certain strings when it parsed out seq ID vs description.
+        """
+        with TemporaryDirectory() as tmpdir:
+            convert(self.path/"seqs.fasta", Path(tmpdir)/"seqs.fasta")
+            self.assertTxtsMatch(
+                self.path/"seqs.fasta",
+                Path(tmpdir)/"seqs.fasta")
 
 
 class TestConvertDryRun(TestBase):
