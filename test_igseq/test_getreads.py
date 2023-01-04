@@ -34,7 +34,7 @@ class TestGetreads(TestBase):
 
         When called it will make empty files with the expected filenames.
         """
-        def side_effect(args):
+        def side_effect(args, extra_args=None):
             idx = args.index("--output-dir") + 1
             path = Path(args[idx])
             path.mkdir(parents=True, exist_ok=True)
@@ -84,7 +84,7 @@ class TestGetreads(TestBase):
         self.mock.assert_called_once()
         self.assertEqual(args_exp, args_obs)
         # There should be some info message but nothing higher than that
-        self.assertEqual(logcounts, {"INFO": 4})
+        self.assertEqual(logcounts, {"INFO": 5})
 
 
 class TestGetreadsMissingFiles(TestGetreads):
@@ -93,7 +93,7 @@ class TestGetreadsMissingFiles(TestGetreads):
     @classmethod
     def make_mock_bcl2fastq(cls):
         """Mock _run_bcl2fastq that doesn't make any of the expected output files."""
-        def side_effect(args):
+        def side_effect(args, extra_args=None):
             idx = args.index("--output-dir") + 1
             path = Path(args[idx])
             path.mkdir(parents=True, exist_ok=True)
@@ -111,7 +111,7 @@ class TestGetreadsMissingFiles(TestGetreads):
         self.mock.assert_called_once()
         # There should be some info messages and also errors about the missing
         # files
-        self.assertEqual(logcounts, {"INFO": 4, "CRITICAL": 2})
+        self.assertEqual(logcounts, {"INFO": 5, "CRITICAL": 2})
 
 
 class TestGetreadsExtraFiles(TestGetreads):
@@ -120,7 +120,7 @@ class TestGetreadsExtraFiles(TestGetreads):
     @classmethod
     def make_mock_bcl2fastq(cls):
         """Mock _run_bcl2fastq that create extra files."""
-        def side_effect(args):
+        def side_effect(args, extra_args=None):
             idx = args.index("--output-dir") + 1
             path = Path(args[idx])
             path.mkdir(parents=True, exist_ok=True)
@@ -145,7 +145,7 @@ class TestGetreadsExtraFiles(TestGetreads):
         self.mock.assert_called_once()
         # There should be some info messages and also a warning about the extra
         # files
-        self.assertEqual(logcounts, {"INFO": 4, "WARNING": 1})
+        self.assertEqual(logcounts, {"INFO": 5, "WARNING": 1})
 
 
 class TestGetreadsLive(TestGetreads, TestLive):

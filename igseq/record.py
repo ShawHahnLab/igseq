@@ -2,6 +2,7 @@
 Helper classes for records stored in FASTA/FASTQ/CSV/TSV with/without gzip.
 """
 
+import re
 import sys
 import csv
 import gzip
@@ -9,13 +10,13 @@ import logging
 from pathlib import Path
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
 from igseq import util
 
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_DUMMY_QUAL = "I"
-DEFAULT_COLUMNS = {k: k for k in ["sequence_id", "sequence", "sequence_quality", "sequence_description"]}
+DEFAULT_COLUMNS = {
+    k: k for k in ["sequence_id", "sequence", "sequence_quality", "sequence_description"]}
 
 # Mapping from file extensions to file format names used here
 FMT_EXT_MAP = {
@@ -31,7 +32,7 @@ FMT_EXT_MAP = {
 # Mapping from file format names to functions that take file handles and give
 # format-specific record iterators.
 READERS = {
-    "csv": lambda hndl: csv.DictReader(hndl),
+    "csv": csv.DictReader,
     "tsv": lambda hndl: csv.DictReader(hndl, delimiter="\t"),
     "fa": lambda hndl: SeqIO.parse(hndl, "fasta"),
     "fq": lambda hndl: SeqIO.parse(hndl, "fastq")}
@@ -96,41 +97,51 @@ class RecordHandler:
     @staticmethod
     def _infer_fmt(path):
         try:
-            path = Path(path)
-        except TypeError:
-            path = Path(str(path.name))
+            try:
+                # Ordinary file paths
+                path = Path(path)
+            except TypeError:
+                # for example, already-open file handles
+                path = Path(str(path.name))
+        except AttributeError:
+            # for example, StringIO objects
+            return None
         ext = path.suffix.lower()
         ext2 = Path(path.stem).suffix.lower()
         fmt2 = FMT_EXT_MAP.get(ext2)
         if ext == ".gz" and fmt2:
             return fmt2 + "gz"
-        else:
-            return FMT_EXT_MAP.get(ext)
-
-    def encode_record(self, record):
-        """Convert record dictionary into a SeqRecord object."""
-        seq = record[self.colmap["sequence"]]
-        seqid = record[self.colmap["sequence_id"]]
-        desc = record.get(self.colmap["sequence_description"], "")
-        seqrecord = SeqRecord(Seq(seq), id=seqid, description=desc)
-        quals = record.get(self.colmap["sequence_quality"])
-        if quals:
-            nums = self.decode_phred(quals)
-            seqrecord.letter_annotations["phred_quality"] = nums
-        elif self.dummyqual:
-            nums = self.decode_phred(self.dummyqual * len(seqrecord))
-            seqrecord.letter_annotations["phred_quality"] = nums
-        return seqrecord
+        return FMT_EXT_MAP.get(ext)
 
     def decode_record(self, obj):
         """Convert object (SeqRecord or dictionary) to dictionary."""
         if isinstance(obj, SeqRecord):
+            # (Biopython has some weirdly asymmetric behavior with sequence IDs
+            # and descriptions, so I'm trying to handle that part myself.)
+            if obj.description != "<unknown description>":
+                if obj.description.startswith(obj.id):
+                    # If there's a space, use that as a separator and record
+                    # the description after that space.  If not, just ID.
+                    match = re.match("([^ ]+)( ?)(.*)", obj.description)
+                    seq_id, spacer, seq_desc = match.groups()
+                    if not spacer:
+                        seq_desc = None
+                else:
+                    # If the description *doesn't* have the ID at the start,
+                    # just take both as-is.
+                    seq_id = obj.id
+                    seq_desc = obj.description
+            else:
+                seq_id = obj.id
+                seq_desc = None
             record = {
-                self.colmap["sequence_id"]: obj.id,
+                self.colmap["sequence_id"]: seq_id,
                 self.colmap["sequence"]: str(obj.seq)}
             quals = obj.letter_annotations.get("phred_quality")
             if quals:
                 record[self.colmap["sequence_quality"]] = self.encode_phred(quals)
+            if seq_desc is not None:
+                record["sequence_description"] = seq_desc
         else:
             record = obj
         return record
@@ -158,7 +169,9 @@ class RecordReader(RecordHandler):
         self.reader = None
 
     def open(self):
-        if self.pathlike == "-":
+        if hasattr(self.pathlike, "fileno"):
+            self.handle = self.pathlike
+        elif self.pathlike == "-":
             if "gz" in self.fmt:
                 LOGGER.info("reading gzip from stdin")
                 self.handle = gzip.open(sys.stdin.buffer, "rt", encoding="ascii")
@@ -224,30 +237,53 @@ class RecordWriter(RecordHandler):
             quals = self.dummyqual * len(record[self.colmap["sequence"]])
             record[self.colmap["sequence_quality"]] = quals
         if not self.dry_run and not self.writer:
+            # order columns like in DEFAULT_COLUMNS with any custom ones on the
+            # end
+            def colsort(val):
+                for idx, key in enumerate(self.colmap):
+                    if self.colmap[key] == val:
+                        return idx
+                return len(DEFAULT_COLUMNS)
+            fieldnames = sorted(record.keys(), key=colsort)
             if self.fmt in ["csv", "csvgz"]:
                 self.writer = csv.DictWriter(
-                    self.handle, fieldnames=record.keys(), lineterminator="\n")
+                    self.handle, fieldnames=fieldnames, lineterminator="\n")
                 self.writer.writeheader()
             elif self.fmt in ["tsv", "tsvgz"]:
                 self.writer = csv.DictWriter(
-                    self.handle, fieldnames=record.keys(), lineterminator="\n", delimiter="\t")
+                    self.handle, fieldnames=fieldnames, lineterminator="\n", delimiter="\t")
                 self.writer.writeheader()
         if self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]:
             if not self.dry_run:
                 self.writer.writerow(record)
         elif self.fmt in ["fa", "fagz"]:
-            seqrecord = self.encode_record(record)
-            if not self.dry_run:
-                SeqIO.write(seqrecord, self.handle, "fasta-2line")
+            self._write_fa(record)
         elif self.fmt in ["fq", "fqgz"]:
-            seqrecord = self.encode_record(record)
-            if not "phred_quality" in seqrecord.letter_annotations:
-                LOGGER.warning(
-                    "No quality scores available, using default dummy value: %s",
-                    DEFAULT_DUMMY_QUAL)
-                self.dummyqual = DEFAULT_DUMMY_QUAL
-            seqrecord = self.encode_record(record)
-            if not self.dry_run:
-                SeqIO.write(seqrecord, self.handle, "fastq")
+            self._write_fq(record)
         else:
             raise ValueError(f"Unknown format {self.fmt}")
+
+    def _write_fa(self, record):
+        seq = record[self.colmap["sequence"]]
+        defline = record[self.colmap["sequence_id"]]
+        desc = record.get(self.colmap["sequence_description"])
+        if desc is not None:
+            defline += f" {desc}"
+        if not self.dry_run:
+            self.handle.write(f">{defline}\n{seq}\n")
+
+    def _write_fq(self, record):
+        seq = record[self.colmap["sequence"]]
+        defline = record[self.colmap["sequence_id"]]
+        desc = record.get(self.colmap["sequence_description"])
+        if self.colmap["sequence_quality"] in record:
+            quals = record[self.colmap["sequence_quality"]]
+        else:
+            LOGGER.warning(
+                "No quality scores available, using default dummy value: %s",
+                DEFAULT_DUMMY_QUAL)
+            quals = "".join(DEFAULT_DUMMY_QUAL * len(seq))
+        if desc is not None:
+            defline += f" {desc}"
+        if not self.dry_run:
+            self.handle.write(f"@{defline}\n{seq}\n+\n{quals}\n")

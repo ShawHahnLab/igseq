@@ -9,6 +9,10 @@ so they can be used later during demultiplexing.
 
 This step can be skipped if you already have all of your reads in single trio
 of I1/R1/R2 fastq.gz files.
+
+Any command-line arguments not recognized here are passed as-is to the
+bcl2fastq command, like the igblast command allows.  See bcl2fastq --help for
+those options.
 """
 
 import logging
@@ -22,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 
 BCL2FASTQ = "bcl2fastq"
 
-def getreads(path_input, dir_out, path_counts="", threads_load=1, threads_proc=1, dry_run=False):
+def getreads(path_input, dir_out, path_counts="", extra_args=None, threads_load=1, threads_proc=1, dry_run=False):
     """Get reads directly from Illumina run directory.
 
     path_input: path to an Illumina run directory
@@ -30,6 +34,8 @@ def getreads(path_input, dir_out, path_counts="", threads_load=1, threads_proc=1
     path_counts: path to csv to write read counts to.  If an empty
                  string, dir_out/getreads.counts.csv is used.  If None, this
                  file isn't written.
+    extra_args: list of arguments to pass to bcl2fastq command.  Must not
+                overlap with the arguments set here.
     threads_load: number of threads for parallel loading
     threads_proc: number of threads for parallel processing
     dry_run: If True, don't actually call any commands or write any files.
@@ -54,6 +60,7 @@ def getreads(path_input, dir_out, path_counts="", threads_load=1, threads_proc=1
         dir_out = Path(dir_out)
     LOGGER.info("input: %s", path_input)
     LOGGER.info("output: %s", dir_out)
+    LOGGER.info("extra args: %s", extra_args)
 
     if path_counts == "":
         path_counts = dir_out / "getreads.counts.csv"
@@ -102,7 +109,7 @@ def getreads(path_input, dir_out, path_counts="", threads_load=1, threads_proc=1
                 "--writing-threads", 1,
                 "--min-log-level", log_level]
             try:
-                _run_bcl2fastq(args)
+                _run_bcl2fastq(args, extra_args)
             except subprocess.CalledProcessError as err:
                 msg = f"bcl2fastq exited with code {err.returncode}"
                 LOGGER.critical(msg)
@@ -147,7 +154,15 @@ def count_bcl2fastq_reads(summary_txt):
                 cts["extra-pf"] += int(row["NumberOfReadsPF"])
     return cts
 
-def _run_bcl2fastq(args):
+def _run_bcl2fastq(args, extra_args=None):
     args = [BCL2FASTQ] + [str(arg) for arg in args]
+    if extra_args:
+        # make sure none of the extra arguments, if there are any, clash with
+        # the ones we've defined above.
+        args_dashes = {arg for arg in args if str(arg).startswith("-")}
+        shared = args_dashes & set(extra_args)
+        if shared:
+            raise util.IgSeqError(f"bcl2fastq arg collision from extra arguments: {shared}")
+        args += extra_args
     LOGGER.info("bcl2fastq command: %s", args)
     subprocess.run(args, check=True)

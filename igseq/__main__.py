@@ -19,6 +19,8 @@ from . import vdj_gather
 from . import vdj_match
 from . import convert
 from . import identity
+from . import msa
+from . import tree
 from . import show
 from .util import IgSeqError
 from .version import __version__
@@ -77,10 +79,9 @@ def main(arglist=None):
         try:
             if args_extra:
                 # If there were unparsed arguments, see if we're in one of the
-                # commands (currently just igblast) that can take extra
-                # pass-through arguments.  If so pass them along, but if not,
-                # error out.
-                if args.func in [_main_igblast]:
+                # commands that can take extra pass-through arguments.  If so
+                # pass them along, but if not, error out.
+                if args.func in [_main_igblast, _main_getreads]:
                     args.func(args, args_extra)
                 else:
                     parser.parse_args(args_extra)
@@ -111,13 +112,14 @@ def main(arglist=None):
         except BrokenPipeError:
             os.dup2(devnull, sys.stderr.fileno())
 
-def _main_getreads(args):
+def _main_getreads(args, extra_args=None):
     if args.no_counts:
         args.countsfile = None
     getreads.getreads(
         path_input=args.input,
         dir_out=args.outdir,
         path_counts=args.countsfile,
+        extra_args=extra_args,
         threads_load=args.threads_load,
         threads_proc=args.threads,
         dry_run=args.dry_run)
@@ -240,6 +242,30 @@ def _main_identity(args):
         colmap=colmap,
         dry_run=args.dry_run)
 
+def _main_msa(args):
+    colmap = args_to_colmap(args)
+    msa.msa(
+        path_in=args.input,
+        path_out=args.output,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
+def _main_tree(args):
+    colmap = args_to_colmap(args)
+    tree.tree(
+        paths_in=args.input,
+        path_out=args.output,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        aligned=args.aligned,
+        pattern=args.set_pattern,
+        lists=args.set_list,
+        colors=args.set_color,
+        colmap=colmap,
+        dry_run=args.dry_run)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -305,6 +331,14 @@ def __setup_arg_parser():
     p_identity = subps.add_parser("identity",
         help="Calculate pairwise identities",
         description=rewrap(identity.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_msa = subps.add_parser("msa",
+        help="Create multiple sequence alignments",
+        description=rewrap(msa.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_tree = subps.add_parser("tree",
+        help="Create and format phylogenetic trees",
+        description=rewrap(tree.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p_show = subps.add_parser("show",
         help="show file contents",
@@ -518,6 +552,54 @@ def __setup_arg_parser():
     p_identity.add_argument("--col-seq",
         help="Name of column containing sequences (for tabular input/output)")
     p_identity.set_defaults(func=_main_identity)
+
+    __add_common_args(p_msa)
+    p_msa.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_msa.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_msa.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_msa.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_msa.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_msa.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_msa.add_argument("--col-seq-desc",
+        help="Name of column containing sequence descriptions (for tabular input/output)")
+    p_msa.set_defaults(func=_main_msa)
+
+    __add_common_args(p_tree)
+    p_tree.add_argument("input", nargs="+",
+        help="input file path, or a literal '-' for standard input")
+    p_tree.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_tree.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_tree.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_tree.add_argument("--aligned", action=argparse.BooleanOptionalAction,
+        help="Explicitly specify if input is aligned or not, for sequence input "
+        "(default: guess from lengths)")
+    p_tree.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input)")
+    p_tree.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input)")
+    p_tree.add_argument("--set-pattern", "-P",
+        help="regular expression to define set membership, with zero or one capture groups. "
+        "If a capture group is given, only that text is used to define the set names.")
+    p_tree.add_argument("--set-list", "-L", action="append",
+        help="filename containing a list of sequence IDs for a set.  "
+        "This can be given multiple times for multiple set/filename pairs.")
+    p_tree.add_argument("--set-color", "-C", action="append",
+        help="setname=colorcode, like set1=#ff0000, to override automatic set colors. "
+        "This can be given multiple times for multiple set/color pairs.")
+    p_tree.set_defaults(func=_main_tree)
 
     return parser
 

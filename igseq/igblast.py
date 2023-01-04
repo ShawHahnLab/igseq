@@ -73,7 +73,7 @@ def igblast(
     if species and not ref_paths:
         # If only species is given, default to using all available reference
         # sets for that species
-        ref_paths = [_fuzzy_species_match(species)]
+        ref_paths = [fuzzy_species_match(species)]
         LOGGER.info("inferred ref path: %s", ref_paths[0])
     attrs_list = vdj.parse_vdj_paths(ref_paths)
     for attrs in attrs_list:
@@ -109,7 +109,7 @@ def detect_organism(species_det, species=None):
         species = species_det.pop()
         LOGGER.info("detected species: %s", species)
     # match species names if needed
-    species_new = _fuzzy_species_match(species)
+    species_new = fuzzy_species_match(species)
     if species_new != species:
         LOGGER.info(
             "detected species as synonym: %s -> %s", species, species_new)
@@ -122,7 +122,7 @@ def detect_organism(species_det, species=None):
     LOGGER.info("detected IgBLAST organism: %s", organism)
     return organism
 
-def _fuzzy_species_match(species):
+def fuzzy_species_match(species):
     """Fuzzy-match one of our species names"""
     species_key = re.sub("[^a-z]", "", species.lower())
     try:

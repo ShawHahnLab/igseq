@@ -1,6 +1,8 @@
 """Utils for the tests, not tests for igseq.util."""
 
+import sys
 import unittest
+from unittest.mock import Mock
 import shutil
 import random
 from io import StringIO, BytesIO
@@ -23,6 +25,65 @@ def __boolish(txt):
 
 # run "live" (real bcl2fastq/cutadapt/pear/etc.) tests?
 LIVE = __boolish(os.getenv("TEST_IGSEQ_LIVE", "True"))
+
+
+class MockPopen(Mock):
+    # Mock for Popen used in a particular way:
+    # checks for expected text written to its stdin
+    # produces canned stderr and stdout, if so
+    def __init__(self, *args, **kwargs):
+        texts = self.setup_texts(kwargs)
+        orig = kwargs["orig"]
+        del kwargs["orig"]
+        kwargs["spec"] = orig
+        # for some reason touching attributes before calling Mock's __init__
+        # leads to AttributeError: _mock_methods so we call this first (but
+        # only after some changes to kwargs)
+        # https://stackoverflow.com/a/62550261/
+        super().__init__(*args, **kwargs)
+        # NOW we can actually set attributes
+        self.orig = orig
+        self.texts = texts
+        # return itself, to pretend we've called Popen()
+        self.return_value = self
+        self.__enter__ = self
+        self.__exit__ = Mock(return_value=False)
+        # returncode is None until a process ends
+        self.returncode = None
+        self.__exit__.side_effect = self.exit
+        self.reset_streams()
+
+    def reset_streams(self):
+        self.stdin = StringIO()
+        self.stderr = StringIO(self.texts["stderr"])
+        self.stdin.close = Mock(side_effect=self.stdin_close)
+        self.stdout = StringIO(self.texts["stdout"])
+
+    def setup_texts(self, kwargs):
+        texts = {"stdin": "", "stdout": "", "stderr": ""}
+        for key in texts.keys():
+            try:
+                texts[key] = kwargs[key]
+                del kwargs[key]
+            except KeyError:
+                texts[key] = ""
+        return texts
+
+    def exit(self, *_, **__):
+        sys.stderr.write(self.texts["stderr"])
+        # when exiting, Popen() waits for the process so it should now have an
+        # exit code
+        self.returncode = 0
+        # resetting stdin/stdout/stderr means we can call it again, though
+        # still only with the same expected use
+        self.reset_streams()
+
+    def stdin_close(self, *_, **__):
+        # This mock gives output assuming this particular input, so check for
+        # that.
+        if self.stdin.getvalue() != self.texts["stdin"]:
+            raise ValueError("standard input mismatch for mock")
+
 
 def random_nt(length):
     return "".join(random.choices(["A", "T", "C", "G"], k = length))
