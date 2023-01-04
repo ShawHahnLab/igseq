@@ -31,18 +31,28 @@ class TestRecordHandler(TestBase):
         handler = record.RecordHandler(self.path/"example.xyz", "fa")
         self.assertEqual(handler.fmt, "fa")
 
-    def test_encode_record(self):
-        obj = self.handler.encode_record({"sequence_id": "id", "sequence": "ACTG"})
-        self.assertEqual(obj.id, "id")
-        self.assertEqual(str(obj.seq), "ACTG")
-
     def test_decode_record(self):
-        rec = self.handler.decode_record({"sequence_id": "id", "sequence": "ACTG"})
-        self.assertEqual(rec["sequence_id"], "id")
-        self.assertEqual(rec["sequence"], "ACTG")
-        rec = self.handler.decode_record(SeqRecord(Seq("ACTG"), id="id"))
-        self.assertEqual(rec["sequence_id"], "id")
-        self.assertEqual(rec["sequence"], "ACTG")
+        cases = [
+            (
+                {"sequence_id": "id", "sequence": "ACTG"},
+                {"sequence_id": "id", "sequence": "ACTG"}),
+            (
+                SeqRecord(Seq("ACTG"), id="id"),
+                {"sequence_id": "id", "sequence": "ACTG"}),
+            (
+                {"sequence_id": "id", "sequence": "ACTG", "sequence_description": "desc"},
+                {"sequence_id": "id", "sequence": "ACTG", "sequence_description": "desc"}),
+            (
+                SeqRecord(Seq("ACTG"), id="id"),
+                {"sequence_id": "id", "sequence": "ACTG"}),
+            (
+                SeqRecord(Seq("ACTG"), id="id", description="desc"),
+                {"sequence_id": "id", "sequence": "ACTG", "sequence_description": "desc"}),
+            ]
+        for case in cases:
+            with self.subTest(record=case[0], expected=case[1]):
+                out = self.handler.decode_record(case[0])
+                self.assertEqual(out, case[1])
 
     def test_encode_phred(self):
         txt = self.handler.encode_phred([33, 33, 33])

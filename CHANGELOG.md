@@ -1,15 +1,27 @@
 # Changelog
 
-## dev
+## 0.5.0 - 2023-01-04
 
 ### Added
 
+ * `summarize` command will automatically use all available references for a
+   given species if a species is given but no references ([#50])
  * `tree` command for creating and formatting phylogenetic trees ([#44])
  * support for additional arguments for `getreads` command passed through to
    bcl2fastq ([#43])
  * `msa` command for building multiple sequence alignments with
    [MUSCLE](https://drive5.com/muscle5/) ([#41])
 
+### Fixed
+
+ * `convert` command and underlying input/output features now handles sequence
+   descriptions ([#51])
+ * `identity` command now uses a custom sequence ID column if one is given
+   ([#49])
+
+[#51]: https://github.com/ShawHahnLab/igseq/pull/51
+[#50]: https://github.com/ShawHahnLab/igseq/pull/50
+[#49]: https://github.com/ShawHahnLab/igseq/pull/49
 [#44]: https://github.com/ShawHahnLab/igseq/pull/44
 [#43]: https://github.com/ShawHahnLab/igseq/pull/43
 [#41]: https://github.com/ShawHahnLab/igseq/pull/41

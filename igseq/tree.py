@@ -286,6 +286,9 @@ def build_seq_sets(seq_ids, pattern=None, lists=None):
     if lists:
         for set_name, seq_set_ids in lists.items():
             seq_sets[set_name].update(seq_set_ids)
+    # Sort by key so we get a consistent order (yes, dicts are ordered these
+    # days)
+    seq_sets = {key: seq_sets[key] for key in sorted(seq_sets.keys())}
     return seq_sets
 
 def color_seqs(seq_ids, seq_sets, seq_set_colors=None):
