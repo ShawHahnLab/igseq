@@ -14,9 +14,12 @@
 
 ### Fixed
 
+ * `convert` command and underlying input/output features now handles sequence
+   descriptions ([#51])
  * `identity` command now uses a custom sequence ID column if one is given
    ([#49])
 
+[#51]: https://github.com/ShawHahnLab/igseq/pull/51
 [#50]: https://github.com/ShawHahnLab/igseq/pull/50
 [#49]: https://github.com/ShawHahnLab/igseq/pull/49
 [#44]: https://github.com/ShawHahnLab/igseq/pull/44
