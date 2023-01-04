@@ -1,6 +1,6 @@
 # Changelog
 
-## dev
+## 0.5.0 - 2023-01-04
 
 ### Added
 
