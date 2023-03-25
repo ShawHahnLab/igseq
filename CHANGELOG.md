@@ -1,5 +1,14 @@
 # Changelog
 
+## dev
+
+### Fixed
+
+ * `tree` command can now handle assigning a color code when exactly one
+   sequence set is defined ([#57])
+
+[#57]: https://github.com/ShawHahnLab/igseq/pull/57
+
 ## 0.5.0 - 2023-01-04
 
 ### Added
