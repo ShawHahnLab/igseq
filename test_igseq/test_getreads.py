@@ -2,6 +2,7 @@
 
 import re
 import logging
+from shutil import which
 from collections import defaultdict
 from tempfile import TemporaryDirectory
 from pathlib import Path
@@ -152,6 +153,8 @@ class TestGetreadsLive(TestBase, TestLive):
 
     def test_getreads(self):
         """Test that getreads uses real bcl2fastq to produce expected outputs"""
+        if not which("bcl2fastq"):
+            self.skipTest("no bcl2fastq found")
         with TemporaryDirectory() as tmpdir:
             with self.assertLogs(logger=getreads.LOGGER, level=logging.INFO) as logcm:
                 stdout, stderr = self.redirect_streams(
