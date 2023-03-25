@@ -314,7 +314,7 @@ def make_seq_set_colors(seq_sets):
         # adapted from SONAR
         # this stretches across COLORS in even increments for as many as we need here
         num = len(colors.COLORS)
-        subset = [int( a * (num-1) / (len(seq_sets)-1) ) for a in range(num)]
+        subset = [int( a * (num-1) / max(1, (len(seq_sets)-1)) ) for a in range(num)]
         try:
             seq_set_colors[set_name] = colors.color_str_to_trio(colors.COLORS[subset[idx]])
         except IndexError:
