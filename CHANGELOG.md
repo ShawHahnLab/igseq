@@ -4,9 +4,12 @@
 
 ### Fixed
 
+ * `getreads` command is now compatible with the latest available version of
+   bcl2fastq, v2.20.0.422 ([#58])
  * `tree` command can now handle assigning a color code when exactly one
    sequence set is defined ([#57])
 
+[#58]: https://github.com/ShawHahnLab/igseq/pull/58
 [#57]: https://github.com/ShawHahnLab/igseq/pull/57
 
 ## 0.5.0 - 2023-01-04

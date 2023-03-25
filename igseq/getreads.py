@@ -15,6 +15,7 @@ bcl2fastq command, like the igblast command allows.  See bcl2fastq --help for
 those options.
 """
 
+import sys
 import logging
 import subprocess
 from tempfile import NamedTemporaryFile
@@ -98,10 +99,6 @@ def getreads(path_input, dir_out, path_counts="", extra_args=None, threads_load=
                 "--sample-sheet", sample_sheet.name,
                 # parallel processing during loading can help a bit in my tests
                 "--loading-threads", threads_load,
-                # parallel processing does *not* help during the bcl2fastq
-                # demultiplexing step, go figure, when we don't have any
-                # demultiplexing to perform here
-                "--demultiplexing-threads", 1,
                 # parallel processing in the processing step helps quite a bit
                 "--processing-threads", threads_proc,
                 # help text says "this must not be higher than number of
@@ -165,4 +162,6 @@ def _run_bcl2fastq(args, extra_args=None):
             raise util.IgSeqError(f"bcl2fastq arg collision from extra arguments: {shared}")
         args += extra_args
     LOGGER.info("bcl2fastq command: %s", args)
-    subprocess.run(args, check=True)
+    proc = subprocess.run(args, check=True, capture_output=True, text=True)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
