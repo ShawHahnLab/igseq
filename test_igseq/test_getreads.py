@@ -25,7 +25,7 @@ class TestGetreads(TestBase):
 
     def tearDown(self):
         # pylint: disable=protected-access
-        getreads._run_bcl2fastq = getreads._run_bcl2fastq
+        getreads._run_bcl2fastq = getreads._run_bcl2fastq_orig
         super().tearDown()
 
     @classmethod
