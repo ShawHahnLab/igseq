@@ -94,6 +94,10 @@ class RecordHandler:
             fmt = fmt_inferred
         return fmt
 
+    @property
+    def tabular(self):
+        return self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]
+
     @staticmethod
     def _infer_fmt(path):
         try:
@@ -206,6 +210,7 @@ class RecordWriter(RecordHandler):
 
     def __init__(self, pathlike, fmt=None, colmap=None, dummyqual=None, dry_run=False):
         super().__init__(pathlike, fmt, colmap, dummyqual, dry_run)
+        self.fieldnames = None
         self.writer = None
 
     def open(self):
@@ -244,14 +249,16 @@ class RecordWriter(RecordHandler):
                     if self.colmap[key] == val:
                         return idx
                 return len(DEFAULT_COLUMNS)
-            fieldnames = sorted(record.keys(), key=colsort)
+            if not self.fieldnames:
+                self.fieldnames = record.keys()
+            self.fieldnames = sorted(self.fieldnames, key=colsort)
             if self.fmt in ["csv", "csvgz"]:
                 self.writer = csv.DictWriter(
-                    self.handle, fieldnames=fieldnames, lineterminator="\n")
+                    self.handle, fieldnames=self.fieldnames, lineterminator="\n")
                 self.writer.writeheader()
             elif self.fmt in ["tsv", "tsvgz"]:
                 self.writer = csv.DictWriter(
-                    self.handle, fieldnames=fieldnames, lineterminator="\n", delimiter="\t")
+                    self.handle, fieldnames=self.fieldnames, lineterminator="\n", delimiter="\t")
                 self.writer.writeheader()
         if self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]:
             if not self.dry_run:

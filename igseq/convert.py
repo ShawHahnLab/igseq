@@ -20,4 +20,11 @@ def convert(path_in, path_out, fmt_in=None, fmt_out=None, colmap=None, dummyqual
     with RecordReader(path_in, fmt_in, colmap, dry_run=dry_run) as reader, \
         RecordWriter(path_out, fmt_out, colmap, dummyqual=dummyqual, dry_run=dry_run) as writer:
         for record in reader:
+            # special case for descriptions
+            if not writer.fieldnames:
+                if writer.tabular and not reader.tabular:
+                    fieldnames = list(record.keys())
+                    if reader.colmap["sequence_description"] not in fieldnames:
+                        fieldnames.append(reader.colmap["sequence_description"])
+                    writer.fieldnames = fieldnames
             writer.write(record)
