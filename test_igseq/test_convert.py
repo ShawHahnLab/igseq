@@ -352,7 +352,6 @@ class TestConvertCustomCols(TestBase):
                 self.path/"unwrapped.alt2.csv",
                 Path(tmpdir)/"unwrapped.csv")
 
-    @expectedFailure
     def test_convert_fa_csv_desc(self):
         """Test converting fasta to csv, with descriptions."""
         colmap = {"sequence_id": "SeqID", "sequence": "Seq", "sequence_description": "SeqDesc"}
