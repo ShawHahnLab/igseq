@@ -141,7 +141,7 @@ class RecordHandler:
             if quals:
                 record[self.colmap["sequence_quality"]] = self.encode_phred(quals)
             if seq_desc is not None:
-                record["sequence_description"] = seq_desc
+                record[self.colmap["sequence_description"]] = seq_desc
         else:
             record = obj
         return record
