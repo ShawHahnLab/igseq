@@ -1,6 +1,6 @@
 # Changelog
 
-## dev
+## 0.5.1 - 2023-03-31
 
 ### Changed
 
