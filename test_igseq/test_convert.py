@@ -327,8 +327,8 @@ class TestConvertCustomCols(TestBase):
     def test_convert_fa_csv(self):
         """Test converting fasta to csv.
 
-        There should be two columns of output, one for sequence IDs and one for
-        sequences, with custom column names.
+        There should be three columns of output, (sequence IDs, sequences, and
+        sequence descriptions) with custom column names as given.
         """
         with self.subTest("both custom columns"), TemporaryDirectory() as tmpdir:
             convert(
@@ -352,8 +352,6 @@ class TestConvertCustomCols(TestBase):
                 self.path/"unwrapped.alt2.csv",
                 Path(tmpdir)/"unwrapped.csv")
 
-    # until #53 is fixed
-    @expectedFailure
     def test_convert_fa_csv_desc(self):
         """Test converting fasta to csv, with descriptions."""
         colmap = {"sequence_id": "SeqID", "sequence": "Seq", "sequence_description": "SeqDesc"}
