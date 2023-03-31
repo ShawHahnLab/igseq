@@ -2,6 +2,11 @@
 
 ## dev
 
+### Changed
+
+ * `convert` now handles edge cases for sequence input and tabular output by
+   always including a sequence description column in the output ([#63])
+
 ### Fixed
 
  * `msa` will now bypass calling MUSCLE when called with just a single input
@@ -13,6 +18,7 @@
  * `tree` command can now handle assigning a color code when exactly one
    sequence set is defined ([#57])
 
+[#63]: https://github.com/ShawHahnLab/igseq/pull/63
 [#62]: https://github.com/ShawHahnLab/igseq/pull/62
 [#60]: https://github.com/ShawHahnLab/igseq/pull/60
 [#58]: https://github.com/ShawHahnLab/igseq/pull/58
