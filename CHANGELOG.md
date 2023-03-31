@@ -4,6 +4,8 @@
 
 ### Fixed
 
+ * `msa` will now bypass calling MUSCLE when called with just a single input
+   sequence, avoiding a crash ([#62])
  * `convert` will now obey a custom sequence description column name if one is
    given with `--col-seq-desc` ([#60])
  * `getreads` command is now compatible with the latest available version of
@@ -11,6 +13,7 @@
  * `tree` command can now handle assigning a color code when exactly one
    sequence set is defined ([#57])
 
+[#62]: https://github.com/ShawHahnLab/igseq/pull/62
 [#60]: https://github.com/ShawHahnLab/igseq/pull/60
 [#58]: https://github.com/ShawHahnLab/igseq/pull/58
 [#57]: https://github.com/ShawHahnLab/igseq/pull/57
