@@ -271,7 +271,7 @@ class RecordWriter(RecordHandler):
         seq = record[self.colmap["sequence"]]
         defline = record[self.colmap["sequence_id"]]
         desc = record.get(self.colmap["sequence_description"])
-        if desc is not None:
+        if desc:
             defline += f" {desc}"
         if not self.dry_run:
             self.handle.write(f">{defline}\n{seq}\n")
@@ -287,7 +287,7 @@ class RecordWriter(RecordHandler):
                 "No quality scores available, using default dummy value: %s",
                 DEFAULT_DUMMY_QUAL)
             quals = "".join(DEFAULT_DUMMY_QUAL * len(seq))
-        if desc is not None:
+        if desc:
             defline += f" {desc}"
         if not self.dry_run:
             self.handle.write(f"@{defline}\n{seq}\n+\n{quals}\n")
