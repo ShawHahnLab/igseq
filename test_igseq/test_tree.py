@@ -193,7 +193,7 @@ class TestParseLists(TestBase):
         self.assertEqual(tree.parse_lists(None), {})
 
 
-class TestParseColors(TestBase):
+class TestColors(TestBase):
 
     def test_parse_colors(self):
         # implicit naming
@@ -213,6 +213,19 @@ class TestParseColors(TestBase):
         self.assertEqual(colors, colors_exp)
         # None should be equivalent to no colors given
         self.assertEqual(tree.parse_colors(None), {})
+
+    def test_make_seq_sets_colors(self):
+        # a basic scenario
+        self.assertEqual(
+            tree.make_seq_set_colors({"A": {"seq1", "seq2"}, "B": {"seq3", "seq4"}}),
+            {"A": [190, 66, 41], "B": [209, 134, 215]})
+        # just one set
+        self.assertEqual(
+            tree.make_seq_set_colors({"A": {"A"}}),
+            {"A": [190, 66, 41]})
+        # how about *no* sets?
+        self.assertEqual(tree.make_seq_set_colors({}), {})
+
 
 
 class TestLooksAligned(TestBase):

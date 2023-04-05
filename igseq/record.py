@@ -94,6 +94,10 @@ class RecordHandler:
             fmt = fmt_inferred
         return fmt
 
+    @property
+    def tabular(self):
+        return self.fmt in ["csv", "tsv", "csvgz", "tsvgz"]
+
     @staticmethod
     def _infer_fmt(path):
         try:
@@ -141,7 +145,7 @@ class RecordHandler:
             if quals:
                 record[self.colmap["sequence_quality"]] = self.encode_phred(quals)
             if seq_desc is not None:
-                record["sequence_description"] = seq_desc
+                record[self.colmap["sequence_description"]] = seq_desc
         else:
             record = obj
         return record
@@ -267,7 +271,7 @@ class RecordWriter(RecordHandler):
         seq = record[self.colmap["sequence"]]
         defline = record[self.colmap["sequence_id"]]
         desc = record.get(self.colmap["sequence_description"])
-        if desc is not None:
+        if desc:
             defline += f" {desc}"
         if not self.dry_run:
             self.handle.write(f">{defline}\n{seq}\n")
@@ -283,7 +287,7 @@ class RecordWriter(RecordHandler):
                 "No quality scores available, using default dummy value: %s",
                 DEFAULT_DUMMY_QUAL)
             quals = "".join(DEFAULT_DUMMY_QUAL * len(seq))
-        if desc is not None:
+        if desc:
             defline += f" {desc}"
         if not self.dry_run:
             self.handle.write(f"@{defline}\n{seq}\n+\n{quals}\n")

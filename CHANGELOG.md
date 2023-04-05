@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.5.1 - 2023-03-31
+
+### Changed
+
+ * `convert` now handles edge cases for sequence input and tabular output by
+   always including a sequence description column in the output ([#63])
+
+### Fixed
+
+ * `msa` will now bypass calling MUSCLE when called with just a single input
+   sequence, avoiding a crash ([#62])
+ * `convert` will now obey a custom sequence description column name if one is
+   given with `--col-seq-desc` ([#60])
+ * `getreads` command is now compatible with the latest available version of
+   bcl2fastq, v2.20.0.422 ([#58])
+ * `tree` command can now handle assigning a color code when exactly one
+   sequence set is defined ([#57])
+
+[#63]: https://github.com/ShawHahnLab/igseq/pull/63
+[#62]: https://github.com/ShawHahnLab/igseq/pull/62
+[#60]: https://github.com/ShawHahnLab/igseq/pull/60
+[#58]: https://github.com/ShawHahnLab/igseq/pull/58
+[#57]: https://github.com/ShawHahnLab/igseq/pull/57
+
 ## 0.5.0 - 2023-01-04
 
 ### Added
