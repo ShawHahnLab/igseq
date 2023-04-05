@@ -2,6 +2,7 @@
 
 import re
 import logging
+from shutil import which
 from collections import defaultdict
 from tempfile import TemporaryDirectory
 from pathlib import Path
@@ -25,7 +26,7 @@ class TestGetreads(TestBase):
 
     def tearDown(self):
         # pylint: disable=protected-access
-        getreads._run_bcl2fastq = getreads._run_bcl2fastq
+        getreads._run_bcl2fastq = getreads._run_bcl2fastq_orig
         super().tearDown()
 
     @classmethod
@@ -66,7 +67,6 @@ class TestGetreads(TestBase):
                 '--barcode-mismatches', 0,
                 '--sample-sheet', '/tmp/tmpqkpjltq5',
                 '--loading-threads', 1,
-                '--demultiplexing-threads', 1,
                 '--processing-threads', 1,
                 '--writing-threads', 1,
                 '--min-log-level', 'ERROR']
@@ -148,9 +148,43 @@ class TestGetreadsExtraFiles(TestGetreads):
         self.assertEqual(logcounts, {"INFO": 5, "WARNING": 1})
 
 
-class TestGetreadsLive(TestGetreads, TestLive):
+class TestGetreadsLive(TestBase, TestLive):
     """Basic test of getreads with actual bcl2fastq."""
 
     def test_getreads(self):
-        # this would need an actual run directory tree to use
-        self.skipTest("not yet implemented")
+        """Test that getreads uses real bcl2fastq to produce expected outputs"""
+        if not which("bcl2fastq"):
+            self.skipTest("no bcl2fastq found")
+        with TemporaryDirectory() as tmpdir:
+            with self.assertLogs(logger=getreads.LOGGER, level=logging.INFO) as logcm:
+                stdout, stderr = self.redirect_streams(
+                    lambda: getreads.getreads(self.path/"input/run", tmpdir))
+                # check stdout+stderr
+                self.assertEqual(stdout, "")
+                stderr = stderr.split("\n")
+                self.assertEqual(stderr[0], "BCL to FASTQ file converter")
+                self.assertIn("Command-line invocation: bcl2fastq", stderr[-3])
+                self.assertIn("Processing completed with 0 errors and 0 warnings", stderr[-2])
+                self.assertEqual("", stderr[-1])
+                # check basic file/dir outputs
+                outputs_obs = [x.name + ("/" if x.is_dir() else "") for x in Path(tmpdir).iterdir()]
+                outputs_exp = [
+                    "getreads.counts.csv",
+                    "InterOp/",
+                    "Reports/",
+                    "Stats/",
+                    "Undetermined_S0_L001_I1_001.fastq.gz",
+                    "Undetermined_S0_L001_R1_001.fastq.gz",
+                    "Undetermined_S0_L001_R2_001.fastq.gz"]
+                self.assertEqual(sorted(outputs_obs), sorted(outputs_exp))
+                # check counts file
+                with open(Path(tmpdir)/"getreads.counts.csv") as f_in:
+                    cts_obs = f_in.read()
+                with open(self.path/"output/getreads.counts.csv") as f_in:
+                    cts_exp = f_in.read()
+                self.assertEqual(cts_obs, cts_exp)
+                logcounts = defaultdict(int)
+                for record in logcm.records:
+                    logcounts[record.levelname] += 1
+        # There should be some info message but nothing higher than that
+        self.assertEqual(logcounts, {"INFO": 6})

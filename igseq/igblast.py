@@ -10,7 +10,7 @@ Any command-line arguments not recognized here are passed as-is to the igblastn
 command, so you can configure things like the output format and file path.  See
 igblastn -help for those options.  Any igblastn argument can be given with two
 dashes if needed to force igseq to handle it correctly (for example,
--num_alignments_V will be interprted as -n um_alignments_V, but
+-num_alignments_V will be interpreted as -n um_alignments_V, but
 --num_alignments_V will work).
 """
 

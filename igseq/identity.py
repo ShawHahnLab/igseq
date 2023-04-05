@@ -11,7 +11,7 @@ of known junctions as references.
 
 The scoring is based on a simple global pairwise alignment, with matches scored
 as 1, mismatches and gaps 0.  Any existing gaps are removed before comparing
-sequences, and differeces in case (lower/upper) are disregarded.
+sequences, and differences in case (lower/upper) are disregarded.
 """
 
 import re

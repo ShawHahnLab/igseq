@@ -37,8 +37,9 @@ def msa(path_in, path_out, fmt_in=None, fmt_out=None, colmap=None, dry_run=False
 def run_muscle(records):
     """Align a set of records with MUSCLE."""
     # muscle crashes with empty input, so we'll just do a noop for that case
-    if not records:
-        LOGGER.warning("no records provided to align; skipping MUSCLE")
+    if len(records) < 2:
+        detail = "only one record" if len(records) else "no records"
+        LOGGER.warning("%s provided to align; skipping MUSCLE", detail)
         return records
     args = ["muscle", "-align", "/dev/stdin", "-output", "/dev/stdout"]
     with Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True) as proc:

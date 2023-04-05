@@ -4,7 +4,7 @@ Trim adapter/low-quality parts from sequences.
 By default this will remove any instances of the R2 adapter found toward the
 end of R1 and the R1 adapter found toward the end of R2.  It will also insist
 that the 5' RACE Anchor be found at the start of R1, discarding read pairs that
-are mising the anchor.  The adapter sequences will be determined from the
+are missing the anchor.  The adapter sequences will be determined from the
 barcodes used for each sample and the selected species.
 """
 
