@@ -1,4 +1,8 @@
 #NEXUS
+begin sets;
+taxset set1 = wk16-001 wk16-002 wk16-003
+taxset set2 = wk20-001 wk20-002 wk20-003
+end;
 begin taxa;
 dimensions ntax=7;
 taxlabels

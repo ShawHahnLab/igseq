@@ -135,7 +135,7 @@ def tree(paths_in, path_out, fmt_in=None, fmt_out=None, aligned=None, pattern=No
         seq_ids = all_leaf_ids(newick_obj)
         seq_sets_combo = build_seq_sets(seq_ids, pattern, seq_sets)
         seq_colors = color_seqs(seq_ids, seq_sets_combo, colors)
-        save_nexus(seq_colors, newick_obj, path_out)
+        save_nexus(newick_obj, path_out, seq_colors, seq_sets_combo)
     else:
         raise NotImplementedError("image output not yet implemented")
 
@@ -321,10 +321,17 @@ def make_seq_set_colors(seq_sets):
             seq_set_colors[set_name] = [random.randint(0, 255) for _ in range(3)]
     return seq_set_colors
 
-def save_nexus(seq_colors, newick_obj, path):
+def save_nexus(newick_obj, path, seq_colors, seq_sets=None):
     newick_text = newick.dumps(newick_obj)
     with open(path, "wt") as f_out:
         f_out.write("#NEXUS\n")
+        if seq_sets:
+            # https://plewis.github.io/nexus/#sets-block
+            f_out.write("begin sets;\n")
+            for set_key, set_seqids in seq_sets.items():
+                set_seqids_txt = " ".join(sorted(set_seqids))
+                f_out.write(f"taxset {set_key} = {set_seqids_txt}\n")
+            f_out.write("end;\n")
         f_out.write("begin taxa;\n")
         f_out.write(f"dimensions ntax={len(seq_colors)};\n")
         f_out.write("taxlabels\n")
