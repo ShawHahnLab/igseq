@@ -1,5 +1,13 @@
 # Changelog
 
+## dev
+
+### Added
+
+ * `tree` now writes seq set groupings in NEXUS output files ([#67])
+
+[#67]: https://github.com/ShawHahnLab/igseq/pull/67
+
 ## 0.5.1 - 2023-03-31
 
 ### Changed
