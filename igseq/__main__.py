@@ -22,6 +22,8 @@ from . import identity
 from . import msa
 from . import tree
 from . import show
+from . import cut
+from .cut import AIRR_REGIONS
 from .util import IgSeqError
 from .version import __version__
 
@@ -266,6 +268,20 @@ def _main_tree(args):
         colmap=colmap,
         dry_run=args.dry_run)
 
+def _main_cut(args):
+    colmap = args_to_colmap(args)
+    cut.cut(
+        ref_paths=args.reference,
+        query=args.input,
+        output=args.output,
+        regions=args.regions,
+        species=args.species,
+        fmt_in=args.input_format,
+        fmt_out=args.output_format,
+        colmap=colmap,
+        dry_run=args.dry_run,
+        threads=args.threads)
+
 def _setup_log(verbose, quiet, prefix):
     # Handle warnings via logging
     logging.captureWarnings(True)
@@ -347,6 +363,11 @@ def __setup_arg_parser():
     p_list = subps.add_parser("list",
         help="list builtin reference data files",
         description=rewrap(show.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    cut_extra_help = "\nAntibody regions recognized: " + ", ".join(AIRR_REGIONS)
+    p_cut = subps.add_parser("cut",
+        help="cut sequences to specific region(s)",
+        description=rewrap(cut.__doc__ + cut_extra_help),
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     __add_common_args(p_get)
@@ -600,6 +621,32 @@ def __setup_arg_parser():
         help="setname=colorcode, like set1=#ff0000, to override automatic set colors. "
         "This can be given multiple times for multiple set/color pairs.")
     p_tree.set_defaults(func=_main_tree)
+
+    __add_common_args(p_cut)
+    p_cut.add_argument("input",
+        help="input file path, or a literal '-' for standard input")
+    p_cut.add_argument("output",
+        help="output file path, or a literal '-' for standard output")
+    p_cut.add_argument("--input-format",
+        help="format of input "
+        "(default: detect from input filename if possible)")
+    p_cut.add_argument("--output-format",
+        help="format of output "
+        "(default: detect from output filename if possible)")
+    p_cut.add_argument("--col-seq-id",
+        help="Name of column containing sequence IDs (for tabular input/output)")
+    p_cut.add_argument("--col-seq",
+        help="Name of column containing sequences (for tabular input/output)")
+    p_cut.add_argument("-R", "--regions", required=True, help=("Antibody region(s) to include. "
+        "To span two regions, separate by - or :"))
+    p_cut.add_argument("-r", "--reference", nargs="+",
+            help="one or more FASTA/directory/builtin names pointing to V/D/J FASTA files")
+    p_cut.add_argument("-S", "--species",
+            help="species to use (human or rhesus).  Default: infer from database if possible")
+    p_cut.add_argument("-t", "--threads", type=int, default=1,
+        help="number of threads for parallel processing (default: 1)")
+    p_cut.set_defaults(func=_main_cut)
+
 
     return parser
 
