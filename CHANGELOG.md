@@ -13,8 +13,10 @@
 
 ### Fixed
 
+ * `igblast` now handles crashes during file input more clearly ([#75])
  * `phix` can accept a custom path for the read counts CSV file ([#74])
 
+[#75]: https://github.com/ShawHahnLab/igseq/pull/75
 [#74]: https://github.com/ShawHahnLab/igseq/pull/74
 [#70]: https://github.com/ShawHahnLab/igseq/pull/70
 [#67]: https://github.com/ShawHahnLab/igseq/pull/67
