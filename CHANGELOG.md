@@ -6,6 +6,17 @@
 
  * `tree` now writes seq set groupings in NEXUS output files ([#67])
 
+### Changed
+
+ * `igblast` has its version pinned at 1.21.0 rather than left unspecified
+   ([#70])
+
+### Fixed
+
+ * `phix` can accept a custom path for the read counts CSV file ([#74])
+
+[#74]: https://github.com/ShawHahnLab/igseq/pull/74
+[#70]: https://github.com/ShawHahnLab/igseq/pull/70
 [#67]: https://github.com/ShawHahnLab/igseq/pull/67
 
 ## 0.5.1 - 2023-03-31
