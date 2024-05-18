@@ -170,6 +170,11 @@ def run_igblast(
         args += extra_args
     args = [IGBLASTN] + [str(arg) for arg in args]
     LOGGER.info("igblastn command: %s", args)
+    # Keep track of when the stdin-handling thread function is fully underway
+    # and if any exceptions have been raised there. This lets us report errors
+    # early and clearly rather than letting IgBLAST print a bunch of irrelevant
+    # text if reading the input didn't even work.
+    stdin_started = threading.Event()
     stdin_errored = threading.Event()
     # bufsize=1 means line buffered
     with Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True, bufsize=1) as proc:
@@ -185,11 +190,13 @@ def run_igblast(
                     with RecordReader(query_path, fmt_in, colmap) as reader, \
                         RecordWriter(proc.stdin, "fa", colmap) as writer:
                         for rec in reader:
+                            stdin_started.set()
                             writer.write(rec)
                 except BrokenPipeError:
                     pass
             except Exception as err:
                 stdin_errored.set()
+                stdin_started.set()
                 raise err
             # whatever else happens here, try to close the process' stdin, so
             # we don't leave things hanging.
@@ -218,6 +225,7 @@ def run_igblast(
         for thread in pipe_threads:
             thread.start()
         try:
+            stdin_started.wait()
             if stdin_errored.is_set():
                 LOGGER.critical("Error handling input for IgBLAST")
                 raise util.IgSeqError("Error handling input for IgBLAST")
