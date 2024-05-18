@@ -21,6 +21,10 @@ igseq tree $FASTA example.nex
 # explicitly.
 igseq tree $FASTA -P '^wk[0-9]+' example_pattern.nex
 
+# For NEXUS output FigTree's formatting options can be specified as key=value
+# pairs and they'll be included in a figtree block at the end of the file.
+igseq tree $FASTA -P '^wk[0-9]+' -F 'branchLabels.fontSize=8' example_pattern.nex
+
 # We can also use a newick tree file (like created above) as input and create a
 # color-coded NEXUS file from that.
 igseq tree example.tree -P '^wk[0-9]+' example_pattern_from_newick.nex

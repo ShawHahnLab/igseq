@@ -264,6 +264,7 @@ def _main_tree(args):
         lists=args.set_list,
         colors=args.set_color,
         merge_colors=args.merge_colors,
+        figtree_opts=args.figtree_option,
         colmap=colmap,
         dry_run=args.dry_run)
 
@@ -603,6 +604,9 @@ def __setup_arg_parser():
     p_tree.add_argument("--merge-colors", "-M", action="store_true",
         help="merge the set colors applying to each sequence?  Otherwise (the default) apply "
         "colors set-by-set with the last set taking precedence")
+    p_tree.add_argument("--figtree-option", "-F", action="append",
+        help="key=value to include in a figtree block for NEXUS output, like "
+        "'nodeLabels.fontSize=8'.  This can be given multiple times.")
     p_tree.set_defaults(func=_main_tree)
 
     return parser
