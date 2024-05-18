@@ -133,17 +133,28 @@ class TestTreeMulti(TestBase):
         # a special case: multiple FASTA inputs will allow implicit set
         # membership based on which files have which sequences
         with TemporaryDirectory() as tmpdir:
-            stdout, stderr = self.redirect_streams(lambda:
+            self.redirect_streams(lambda:
                 tree.tree(
                     [self.path/"seqs.fasta", self.path/"seqs2.fasta"],
                     Path(tmpdir)/"tree.tree"))
             self.assertTxtsMatch(self.path/"tree.tree", Path(tmpdir)/"tree.tree")
+        # default behavior: for overlapping set membership for any given
+        # sequence, the color from the last set is applied
         with TemporaryDirectory() as tmpdir:
-            stdout, stderr = self.redirect_streams(lambda:
+            self.redirect_streams(lambda:
                 tree.tree(
                     [self.path/"seqs.fasta", self.path/"seqs2.fasta"],
                     Path(tmpdir)/"tree.nex"))
             self.assertTxtsMatch(self.path/"tree.nex", Path(tmpdir)/"tree.nex")
+        # merge behavior: for overlapping set membership for any given
+        # sequence, the colors from all sets containing that sequence are
+        # merged
+        with TemporaryDirectory() as tmpdir:
+            self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.fasta", self.path/"seqs2.fasta"],
+                    Path(tmpdir)/"tree_merged.nex", merge_colors=True))
+            self.assertTxtsMatch(self.path/"tree_merged.nex", Path(tmpdir)/"tree_merged.nex")
 
 
 class TestTreeMultiGaps(TestTreeMulti):
@@ -225,7 +236,6 @@ class TestColors(TestBase):
             {"A": [190, 66, 41]})
         # how about *no* sets?
         self.assertEqual(tree.make_seq_set_colors({}), {})
-
 
 
 class TestLooksAligned(TestBase):
