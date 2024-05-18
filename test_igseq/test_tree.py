@@ -126,6 +126,45 @@ class TestTreeFigTree(TestBase):
             self.assertTxtsMatch(self.path/"tree.tree", Path(tmpdir)/"tree.tree")
 
 
+class TestTreePos(TestBase):
+    """Test defining seq sets by what they have in an alignment."""
+
+    def test_tree(self):
+        # simple case, where the alignment is the input itself
+        with TemporaryDirectory() as tmpdir:
+            self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.aln.fasta"],
+                    Path(tmpdir)/"tree.nex",
+                    set_pos="26"))
+            self.assertTxtsMatch(self.path/"tree.nex", Path(tmpdir)/"tree.nex")
+        # but if we're using something else as input (like an existing tree
+        # file) the alignment needs to be given separately
+        with TemporaryDirectory() as tmpdir:
+            with self.assertRaises(IgSeqError):
+                self.redirect_streams(lambda:
+                    tree.tree(
+                        [self.path/"tree.tree"],
+                        Path(tmpdir)/"tree.nex",
+                        set_pos="26"))
+        with TemporaryDirectory() as tmpdir:
+            self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"tree.tree"],
+                    Path(tmpdir)/"tree.nex",
+                    set_pos="26", set_pos_msa=self.path/"seqs.aln.fasta"))
+
+    def test_tree_colors(self):
+        # With alignment-based sets, the set name is the sequence region
+        with TemporaryDirectory() as tmpdir:
+            self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.aln.fasta"],
+                    Path(tmpdir)/"tree_colors.nex",
+                    set_pos="26",
+                    colors=["A=#ff0000"]))
+            self.assertTxtsMatch(self.path/"tree_colors.nex", Path(tmpdir)/"tree_colors.nex")
+
 class TestTreeMulti(TestBase):
 
     def setUp(self):
