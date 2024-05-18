@@ -1,0 +1,18 @@
+#NEXUS
+begin taxa;
+dimensions ntax=3;
+taxlabels
+'seq1'[&!color=#000000]
+'seq2'[&!color=#000000]
+'seq3'[&!color=#000000]
+;
+end;
+
+begin trees;
+tree tree_1 = (seq1:0.000000005,seq2:0.000000006,seq3:0.034239758);
+
+end;
+
+begin figtree;
+	set branchLabels.fontSize=8;
+end;

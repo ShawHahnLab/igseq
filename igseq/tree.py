@@ -57,7 +57,7 @@ FMT_OUT = {"nex", "newick", "pdf", "png"}
 
 def tree(paths_in, path_out,
         fmt_in=None, fmt_out=None, aligned=None, pattern=None, lists=None,
-        colors=None, merge_colors=False, colmap=None, dry_run=False):
+        colors=None, merge_colors=False, figtree_opts=None, colmap=None, dry_run=False):
     LOGGER.info("given input path(s): %s", paths_in)
     LOGGER.info("given output path: %s", path_out)
     LOGGER.info("given input format: %s", fmt_in)
@@ -67,6 +67,7 @@ def tree(paths_in, path_out,
     LOGGER.info("given set lists: %s", lists)
     LOGGER.info("given set colors: %s", colors)
     LOGGER.info("given merge colors setting: %s", merge_colors)
+    LOGGER.info("given figtree options: %s", figtree_opts)
     LOGGER.info("given colmap: %s", colmap)
 
     paths_in_parsed = parse_paths_in(paths_in)
@@ -74,6 +75,10 @@ def tree(paths_in, path_out,
     fmt_out_inf = _infer_output_format(path_out, fmt_out)
     seq_sets = parse_lists(lists)
     colors = parse_colors(colors)
+
+    if fmt_out_inf != "nex" and figtree_opts:
+        LOGGER.warning(
+            "Given FigTree options are ignored for non-nex output format %s", fmt_out_inf)
 
     # Handle input
     if fmt_in_inf in record.FMT_EXT_MAP.values():
@@ -138,7 +143,10 @@ def tree(paths_in, path_out,
         seq_ids = all_leaf_ids(newick_obj)
         seq_sets_combo = build_seq_sets(seq_ids, pattern, seq_sets)
         seq_colors = color_seqs(seq_ids, seq_sets_combo, merge_colors, colors)
-        save_nexus(newick_obj, path_out, seq_colors, seq_sets_combo)
+        custom_blocks = None
+        if figtree_opts:
+            custom_blocks = {"figtree": [f"set {opt}" for opt in figtree_opts]}
+        save_nexus(newick_obj, path_out, seq_colors, seq_sets_combo, custom_blocks)
     else:
         raise NotImplementedError("image output not yet implemented")
 
@@ -331,9 +339,9 @@ def make_seq_set_colors(seq_sets):
             seq_set_colors[set_name] = [random.randint(0, 255) for _ in range(3)]
     return seq_set_colors
 
-def save_nexus(newick_obj, path, seq_colors, seq_sets=None):
+def save_nexus(newick_obj, path, seq_colors, seq_sets=None, custom_blocks=None):
     newick_text = newick.dumps(newick_obj)
-    with open(path, "wt") as f_out:
+    with open(path, "wt", encoding="ASCII") as f_out:
         f_out.write("#NEXUS\n")
         if seq_sets:
             # https://plewis.github.io/nexus/#sets-block
@@ -357,3 +365,9 @@ def save_nexus(newick_obj, path, seq_colors, seq_sets=None):
         f_out.write(f"tree tree_1 = {newick_text}\n\n")
         f_out.write("end;\n")
         f_out.write("\n")
+        if custom_blocks:
+            for block_name, block_lines in custom_blocks.items():
+                f_out.write(f"begin {block_name};\n")
+                for line in block_lines:
+                    f_out.write(f"\t{line};\n")
+                f_out.write("end;\n")

@@ -102,6 +102,30 @@ class TestTreeEmpty(TestBase):
             tree.run_fasttree([])
 
 
+class TestTreeFigTree(TestBase):
+    """Test with optional FigTree settings in NEXUS output."""
+
+    def test_tree(self):
+        with TemporaryDirectory() as tmpdir:
+            self.redirect_streams(lambda:
+                tree.tree(
+                    [self.path/"seqs.aln.fasta"],
+                    Path(tmpdir)/"tree.nex",
+                    figtree_opts=["branchLabels.fontSize=8"]))
+            self.assertTxtsMatch(self.path/"tree.nex", Path(tmpdir)/"tree.nex")
+        # It should warn if the output isn't NEXUS
+        with TemporaryDirectory() as tmpdir:
+            with self.assertLogs(level="WARNING") as log_cm:
+                self.redirect_streams(lambda:
+                    tree.tree(
+                        [self.path/"seqs.aln.fasta"],
+                        Path(tmpdir)/"tree.tree",
+                        figtree_opts=["branchLabels.fontSize=8"]))
+            self.assertEqual(len(log_cm.output), 1,
+                "a warning should be logged for FigTree options and non-nex output")
+            self.assertTxtsMatch(self.path/"tree.tree", Path(tmpdir)/"tree.tree")
+
+
 class TestTreeMulti(TestBase):
 
     def setUp(self):
