@@ -263,6 +263,7 @@ def _main_tree(args):
         pattern=args.set_pattern,
         lists=args.set_list,
         colors=args.set_color,
+        merge_colors=args.merge_colors,
         colmap=colmap,
         dry_run=args.dry_run)
 
@@ -599,6 +600,9 @@ def __setup_arg_parser():
     p_tree.add_argument("--set-color", "-C", action="append",
         help="setname=colorcode, like set1=#ff0000, to override automatic set colors. "
         "This can be given multiple times for multiple set/color pairs.")
+    p_tree.add_argument("--merge-colors", "-M", action="store_true",
+        help="merge the set colors applying to each sequence?  Otherwise (the default) apply "
+        "colors set-by-set with the last set taking precedence")
     p_tree.set_defaults(func=_main_tree)
 
     return parser
