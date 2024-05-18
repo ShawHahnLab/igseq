@@ -4,6 +4,8 @@
 
 ### Added
 
+ * `tree` now supports defining seq set groupings via positions in an alignment
+   ([#81])
  * `tree` now supports writing FigTree settings in NEXUS output files ([#79])
  * `tree` now writes seq set groupings in NEXUS output files ([#67])
 
@@ -19,6 +21,7 @@
  * `igblast` now handles crashes during file input more clearly ([#75])
  * `phix` can accept a custom path for the read counts CSV file ([#74])
 
+[#81]: https://github.com/ShawHahnLab/igseq/pull/81
 [#79]: https://github.com/ShawHahnLab/igseq/pull/79
 [#77]: https://github.com/ShawHahnLab/igseq/pull/77
 [#75]: https://github.com/ShawHahnLab/igseq/pull/75

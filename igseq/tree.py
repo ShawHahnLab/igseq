@@ -57,7 +57,8 @@ FMT_OUT = {"nex", "newick", "pdf", "png"}
 
 def tree(paths_in, path_out,
         fmt_in=None, fmt_out=None, aligned=None, pattern=None, lists=None,
-        colors=None, merge_colors=False, figtree_opts=None, colmap=None, dry_run=False):
+        colors=None, merge_colors=False, figtree_opts=None,
+        set_pos=None, set_pos_msa=None, colmap=None, dry_run=False):
     LOGGER.info("given input path(s): %s", paths_in)
     LOGGER.info("given output path: %s", path_out)
     LOGGER.info("given input format: %s", fmt_in)
@@ -68,6 +69,8 @@ def tree(paths_in, path_out,
     LOGGER.info("given set colors: %s", colors)
     LOGGER.info("given merge colors setting: %s", merge_colors)
     LOGGER.info("given figtree options: %s", figtree_opts)
+    LOGGER.info("given set position ranges: %s", set_pos)
+    LOGGER.info("given set position alignment path: %s", set_pos_msa)
     LOGGER.info("given colmap: %s", colmap)
 
     paths_in_parsed = parse_paths_in(paths_in)
@@ -133,6 +136,15 @@ def tree(paths_in, path_out,
             newick_obj = load_newick_from_nexus(path_in)
             if not newick_obj:
                 raise util.IgSeqError("No tree found in NEXUS file {path_in}")
+
+    # If position-based sets are defined, add those to the same list-based
+    # definitions from earlier (if any)
+    if set_pos:
+        if not set_pos_msa:
+            if not aligned:
+                raise util.IgSeqError("set_pos_msa required if input is not an alignment")
+            set_pos_msa = list(paths_in_parsed.values())[0]
+        seq_sets.update(extract_seq_ranges(set_pos, set_pos_msa))
 
     # Handle output
     if fmt_out_inf == "newick":
@@ -371,3 +383,29 @@ def save_nexus(newick_obj, path, seq_colors, seq_sets=None, custom_blocks=None):
                 for line in block_lines:
                     f_out.write(f"\t{line};\n")
                 f_out.write("end;\n")
+
+def extract_seq_ranges(set_pos, set_pos_msa):
+    idx_ranges = parse_set_ranges(set_pos)
+    # first seq ID -> snippet
+    seq_pos_map = {}
+    with record.RecordReader(set_pos_msa) as reader:
+        for row in reader:
+            snippet = "".join([row["sequence"][x:y] for x, y in idx_ranges])
+            seq_pos_map[row["sequence_id"]] = snippet
+    # then snippet -> lists of seq IDs
+    out = defaultdict(list)
+    for seq_id, snippet in seq_pos_map.items():
+        out[snippet].append(seq_id)
+    return out
+
+def parse_set_ranges(txt):
+    """Convert position ranges to lists of pairs of 0-based index values."""
+    # e.g. "5" or "5-6,10"
+    out = []
+    for pos_range in txt.split(","):
+        out_range = [int(x)-1 for x in re.split("[-:]", pos_range, 2)]
+        if len(out_range) == 1:
+            out_range.append(out_range[0])
+        out_range[1] += 1
+        out.append(out_range)
+    return out

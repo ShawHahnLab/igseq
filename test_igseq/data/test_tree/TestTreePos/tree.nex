@@ -1,0 +1,19 @@
+#NEXUS
+begin sets;
+taxset A = seq1 seq2
+taxset G = seq3
+end;
+begin taxa;
+dimensions ntax=3;
+taxlabels
+'seq1'[&!color=#be4229]
+'seq2'[&!color=#be4229]
+'seq3'[&!color=#d186d7]
+;
+end;
+
+begin trees;
+tree tree_1 = (seq1:0.000000005,seq2:0.000000006,seq3:0.034239758);
+
+end;
+

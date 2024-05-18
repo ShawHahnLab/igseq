@@ -265,6 +265,8 @@ def _main_tree(args):
         colors=args.set_color,
         merge_colors=args.merge_colors,
         figtree_opts=args.figtree_option,
+        set_pos=args.set_pos,
+        set_pos_msa=args.set_pos_msa,
         colmap=colmap,
         dry_run=args.dry_run)
 
@@ -607,6 +609,13 @@ def __setup_arg_parser():
     p_tree.add_argument("--figtree-option", "-F", action="append",
         help="key=value to include in a figtree block for NEXUS output, like "
         "'nodeLabels.fontSize=8'.  This can be given multiple times.")
+    p_tree.add_argument("--set-pos",
+        help="Position ranges to use to define set membership for sequences.  "
+        "If input is not an alignment, --set-pos-msa is required.")
+    p_tree.add_argument("--set-pos-msa",
+        help="alignment FASTA to use with --set-pos to define set membership.  "
+        "Only required if sets are being defined by alignment position and "
+        "input is not an alignment.")
     p_tree.set_defaults(func=_main_tree)
 
     return parser
