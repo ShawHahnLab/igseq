@@ -1,5 +1,5 @@
 # https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html
-{% set version = "0.6.0-rc1" %}
+{% set version = "0.6.0rc1" %}
 {% set build = "0" %}
 
 package:
@@ -12,7 +12,7 @@ about:
 
 source:
   git_url: https://github.com/shawhahnlab/igseq.git
-  git_rev: master
+  git_rev: release-0.6.0
   git_depth: 1
 
 build:
