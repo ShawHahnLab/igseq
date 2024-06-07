@@ -119,7 +119,7 @@ Various convenience subcommands:
  * msa: Create multiple sequence alignments (using [MUSCLE]).
  * tree: Create and format phylogenetic trees (using [FastTree]).
  * list, show: list built-in reference data files, and show file contents with
-   support for pretty-printing some common formats
+   support for pretty-printing some common formats.
 
 [bcl2fastq]: https://support.illumina.com/sequencing/sequencing_software/bcl2fastq-conversion-software.html
 [Cutadapt]: https://cutadapt.readthedocs.io
