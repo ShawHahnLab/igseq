@@ -8,4 +8,4 @@ See https://www.python.org/dev/peps/pep-0396/
 # version in package metadata instead.  A good overview:
 # https://stackoverflow.com/a/76900225
 
-__version__ = "0.6.0-rc1"
+__version__ = "0.6.0"
