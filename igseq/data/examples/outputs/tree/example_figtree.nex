@@ -7,12 +7,12 @@ begin taxa;
 dimensions ntax=7;
 taxlabels
 'somethingelse'[&!color=#000000]
-'wk16-001'[&!color=#bb0000]
-'wk16-002'[&!color=#bb0000]
-'wk16-003'[&!color=#bb0000]
-'wk20-001'[&!color=#6600ee]
-'wk20-002'[&!color=#6600ee]
-'wk20-003'[&!color=#6600ee]
+'wk16-001'[&!color=#be4229]
+'wk16-002'[&!color=#be4229]
+'wk16-003'[&!color=#be4229]
+'wk20-001'[&!color=#d186d7]
+'wk20-002'[&!color=#d186d7]
+'wk20-003'[&!color=#d186d7]
 ;
 end;
 
@@ -21,3 +21,6 @@ tree tree_1 = ((wk16-003:0.000000005,wk20-003:0.010079486)0.843:0.010079489,wk20
 
 end;
 
+begin figtree;
+	set branchLabels.fontSize=8;
+end;

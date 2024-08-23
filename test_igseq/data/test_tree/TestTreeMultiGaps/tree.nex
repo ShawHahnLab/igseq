@@ -1,8 +1,12 @@
 #NEXUS
+begin sets;
+taxset set1 = seq1 seq2 seq3
+taxset set2 = seq1 seq4
+end;
 begin taxa;
 dimensions ntax=4;
 taxlabels
-'seq1'[&!color=#000000]
+'seq1'[&!color=#d186d7]
 'seq2'[&!color=#be4229]
 'seq3'[&!color=#be4229]
 'seq4'[&!color=#d186d7]

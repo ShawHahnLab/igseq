@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.6.0 - 2024-08-23
+
+### Added
+
+ * `tree` now supports defining seq set groupings via positions in an alignment
+   ([#81])
+ * `tree` now supports writing FigTree settings in NEXUS output files ([#79])
+ * `tree` now writes seq set groupings in NEXUS output files ([#67])
+
+### Changed
+
+ * `tree` defaults to simpler color-coding logic for sets of sequences (for
+   sequences in multiple sets, by default the last set's color is used) ([#77])
+ * `igblast` has its version pinned at 1.21.0 rather than left unspecified
+   ([#70])
+
+### Fixed
+
+ * `igblast` now handles crashes during file input more clearly ([#75])
+ * `phix` can accept a custom path for the read counts CSV file ([#74])
+
+[#81]: https://github.com/ShawHahnLab/igseq/pull/81
+[#79]: https://github.com/ShawHahnLab/igseq/pull/79
+[#77]: https://github.com/ShawHahnLab/igseq/pull/77
+[#75]: https://github.com/ShawHahnLab/igseq/pull/75
+[#74]: https://github.com/ShawHahnLab/igseq/pull/74
+[#70]: https://github.com/ShawHahnLab/igseq/pull/70
+[#67]: https://github.com/ShawHahnLab/igseq/pull/67
+
 ## 0.5.1 - 2023-03-31
 
 ### Changed

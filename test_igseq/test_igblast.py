@@ -98,3 +98,14 @@ class TestIgblastLiveCrash(TestBase, TestLive):
         stdout, stderr = self.redirect_streams(catch_expected_error)
         self.assertEqual(stdout, "")
         self.assertIn('Error: Unknown argument: "bad-arg"', stderr)
+
+    def test_igblast_thread_crash(self):
+        """Test that crashes within the input thread are handled properly."""
+        # Using a file name that doesn't exist
+        def catch_expected_error():
+            with self.assertRaises(IgSeqError):
+                igblast.igblast(
+                    ["rhesus/imgt"], self.path/"input/query2.fasta")
+        stdout, stderr = self.redirect_streams(catch_expected_error)
+        self.assertEqual(stdout, "")
+        self.assertIn("No such file or directory", stderr)
