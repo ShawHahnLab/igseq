@@ -6,7 +6,7 @@ end;
 begin taxa;
 dimensions ntax=4;
 taxlabels
-'seq1'[&!color=#d186d7]
+'seq1'[&!color=#000000]
 'seq2'[&!color=#be4229]
 'seq3'[&!color=#be4229]
 'seq4'[&!color=#d186d7]

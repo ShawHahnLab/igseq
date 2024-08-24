@@ -39,6 +39,8 @@ def phix(paths_input, bam_out="", counts_out="", dry_run=False, threads=1):
         bam_out = Path(bam_out)
     if counts_out == "":
         counts_out = bam_out.with_suffix(".counts.csv")
+    else:
+        counts_out = Path(counts_out)
     LOGGER.info("input R1: %s", paths_input["R1"])
     LOGGER.info("input R2: %s", paths_input["R2"])
     LOGGER.info("output bam: %s", bam_out)

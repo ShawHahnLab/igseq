@@ -21,12 +21,15 @@ igseq tree $FASTA example.nex
 # explicitly.
 igseq tree $FASTA -P '^wk[0-9]+' example_pattern.nex
 
+# For NEXUS output FigTree's formatting options can be specified as key=value
+# pairs and they'll be included in a figtree block at the end of the file.
+igseq tree $FASTA -P '^wk[0-9]+' -F 'branchLabels.fontSize=8' example_figtree.nex
+
 # We can also use a newick tree file (like created above) as input and create a
 # color-coded NEXUS file from that.
 igseq tree example.tree -P '^wk[0-9]+' example_pattern_from_newick.nex
 
-# Or, define sets by lists of sequence IDs.  (Here these are "set1" and
-# "set2"; they could also be named like "-L wk16=wk16.txt -L wk20=wk20.txt".)
+# Or, define sets by lists of sequence IDs.
 igseq tree $FASTA -L $WK16 -L $WK20 example_lists.nex
 
 # We can override colors using the set names found in the IDs based on that
