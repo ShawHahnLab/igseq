@@ -16,7 +16,9 @@ jobs:
               wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
               bash Miniconda3-latest-Linux-x86_64.sh -b
               ~/miniconda3/bin/conda install -c conda-forge mamba --quiet
-              ~/miniconda3/bin/mamba env update --file igseq/igseq/data/environment.yml --quiet
+              source ~/miniconda3/bin/activate
+              mamba create -n igseq
+              mamba env update --file igseq/igseq/data/environment.yml --quiet --yes
             fi
           no_output_timeout: 20m
       - save_cache:
