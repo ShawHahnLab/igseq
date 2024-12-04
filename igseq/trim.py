@@ -224,7 +224,7 @@ def get_adapters_fwd(sample, species=None):
     # beginning of R2 (in the 3' direction, that is), so we'll trim that off
     # the end of R1.
     chain_type = sample.get("Type")
-    options = [row for row in util.PRIMERS if chain_type is None or row["Type"] == chain_type]
+    options = [row for row in util.PRIMERS if not chain_type or row["Type"] == chain_type]
     if not options:
         raise util.IgSeqError(f"Unknown antibody chain type {chain_type}")
     matches = {}
