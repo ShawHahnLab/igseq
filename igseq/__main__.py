@@ -405,7 +405,7 @@ def __setup_arg_parser():
         help="file to write read counts to")
     p_trim.add_argument("--no-counts", action="store_true",
         help="don't write a counts file")
-    p_trim.add_argument("-S", "--species", required=True,
+    p_trim.add_argument("-S", "--species",
         help="species to use for selecting appropriate primer sequences (human or rhesus)")
     p_trim.add_argument("--sample-name",
         help="use this sample name rather than inferring from filenames")
