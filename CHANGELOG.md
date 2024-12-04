@@ -1,5 +1,13 @@
 # Changelog
 
+## dev
+
+### Changed
+
+ * `trim` now allows the species to be left unspecified and/or the Type column
+   in the samples CSV to be missing or blank, in which case any applicable
+   adapter sequences will be used in the cutadapt commands ([#85])
+
 ## 0.6.0 - 2024-08-23
 
 ### Added
