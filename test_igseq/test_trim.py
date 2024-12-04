@@ -47,6 +47,17 @@ class TestTrim(TestBase):
                 "rhesus_delta": "CCAAGGCTCCGGATGTGTTCCCCATCATATCAG",
                 "rhesus_kappa": "CTGTGGCTGCACCATCTGTCTTCATCTTCCCGC",
                 "rhesus_lambda": "CCCTCCTCTGAGGAGCTTCAAGCCAACAAGGCC"})
+        with self.subTest(case="blank chain type"):
+            adapter_fwd = get_adapters_fwd({"Type": ""}, "rhesus")
+            self.assertEqual(
+                adapter_fwd, {
+                "rhesus_gamma": "TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+                "rhesus_alpha": "CCGACCAGCCCCAAGGTCTTCCCGCTGAGCCTC",
+                "rhesus_mu": "TGCATCCGCCCCAACCCTTTTCCCCCTCGTCTC",
+                "rhesus_epsilon": "CACACAGAGCCCATCCGTCTTCCCCTTGACCCG",
+                "rhesus_delta": "CCAAGGCTCCGGATGTGTTCCCCATCATATCAG",
+                "rhesus_kappa": "CTGTGGCTGCACCATCTGTCTTCATCTTCCCGC",
+                "rhesus_lambda": "CCCTCCTCTGAGGAGCTTCAAGCCAACAAGGCC"})
 
     def test_get_adapter_rev(self):
         """Test getting the adapter sequence to trim from the end of R2"""
