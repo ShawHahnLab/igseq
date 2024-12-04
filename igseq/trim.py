@@ -6,6 +6,14 @@ end of R1 and the R1 adapter found toward the end of R2.  It will also insist
 that the 5' RACE Anchor be found at the start of R1, discarding read pairs that
 are missing the anchor.  The adapter sequences will be determined from the
 barcodes used for each sample and the selected species.
+
+The R1 adapter to trim from R2 is the forward barcode sequence at the start of
+R1 and the constant P5 sequence just upstream of that.
+
+The R2 adapter to trim from R1 is whatever constant region primers are
+applicable based on the supplied sample metadata and specified species.  If no
+species is specified and/or no chain type is specified via the sample metadata,
+it will recognize all primers that could be applicable.
 """
 
 import re
@@ -29,8 +37,8 @@ DEFAULTS = {
 # https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming
 # https://cutadapt.readthedocs.io/en/stable/algorithms.html#quality-trimming-algorithm
 def trim(
-    paths_input, path_samples, dir_out="", path_counts="", species=DEFAULTS["species"],
-    sample_name=None, dry_run=False, **kwargs):
+    paths_input, path_samples, dir_out="", path_counts="", *,
+    species=DEFAULTS["species"], sample_name=None, dry_run=False, **kwargs):
     """Trim sample-specific adapter sequences from one or more file pairs.
 
     paths_input: list of paths to demultiplexed samples (one directory or a
@@ -101,10 +109,10 @@ def trim(
     for pair in pairs:
         # what sample attributes go with this file pair?
         sample = [samp for samp in samples.values() if samp["Sample"] == pair["sample_name"]][0]
-        adapter_fwd = get_adapter_fwd(sample, species)
+        adapters_fwd = get_adapters_fwd(sample, species)
         adapter_rev = get_adapter_rev(sample)
         samp = pair["sample_name"]
-        LOGGER.info("sample %s: Fwd Adapter: %s", samp, adapter_fwd)
+        LOGGER.info("sample %s: Fwd Adapter: %s", samp, adapters_fwd)
         LOGGER.info("sample %s: Rev Adapter: %s", samp, adapter_rev)
         LOGGER.info("sample %s: R1 in: %s", samp, pair["R1"])
         LOGGER.info("sample %s: R2 in: %s", samp, pair["R2"])
@@ -118,25 +126,27 @@ def trim(
         # not quiet if we're at a more verbose log level (in effect this means
         # we'd have to be at DEBUG to get quiet=False)
         quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
-        # combine 5PIIA and forward adapter to get the sequence cutadapt will
-        # expect at the start and end of R1, respectively.  5PIIA will be
-        # anchored so it is implicitly requred.  The other sequence may or may
-        # not be found.
-        adapter_fwd = f"^{util.ANCHOR5P}...{adapter_fwd}"
+        # combine 5PIIA and forward adapter(s) to get the sequence cutadapt
+        # will expect at the start and end of R1, respectively.  5PIIA will be
+        # anchored so it is implicitly requred.  The other sequence, on the 3'
+        # end, may or may not be found.
+        adapters_fwd_lnk = {
+            f"race_anchor_and_{k}": f"^{util.ANCHOR5P}...{v}" for k, v in adapters_fwd.items()}
         if not dry_run:
             trim_pair(
                 pair["R1"], pair["R2"], pair["R1_out"], pair["R2_out"],
                 pair["JSON_out_1"], pair["JSON_out_2"],
-                adapter_fwd, adapter_rev,
+                adapters_fwd_lnk, adapter_rev,
                 discard_untrimmed = True,
                 quiet=quiet,
                 **kwargs)
             if pair["path_counts"]:
                 cts= _count_cutadapt_reads(pair["JSON_out_1"], pair["JSON_out_2"])
-                cts = [{"Category": "trim", "Sample": samp, "Item": k, "NumSeqs": v} for k, v in cts.items()]
+                cts = [{"Category": "trim", "Sample": samp, "Item": k, "NumSeqs": v} \
+                    for k, v in cts.items()]
                 util.save_counts(pair["path_counts"], cts)
 
-def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapter_fwd, adapter_rev,
+def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, adapter_rev,
     discard_untrimmed=True,
     min_length=DEFAULTS["min_length"],
     quality_cutoff=DEFAULTS["quality_cutoff"],
@@ -153,7 +163,8 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapter_fwd, a
                command.  If empty or None the report is not written.
     json2_out: Path to output JSON-format report file for second cutadapt
                command.  If empty or None the report is not written.
-    adapter_fwd: Sequence to trim from 3' end of R1 (for -a argument)
+    adapters_fwd: Dictionary of sequences to trim from 3' end of R1 (for -a
+                  arguments)
     adapter_rev: Sequence to trim from 3' end of R2 (for -A argument)
     discard_untrimmed: should reads without required adapters found be
                        discarded?
@@ -167,10 +178,13 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapter_fwd, a
     if json1_out:
         args1.extend(["--json", json1_out])
     args1 = [str(arg) for arg in args1]
-    # second command: trim linked R1 adapter and filter those that don't start
-    # with the expected sequence.  also apply all other filtering criteria.
-    args2 = args_common + [
-        "-a", adapter_fwd,
+    # second command: trim linked R1 adapter(s) and filter those that don't
+    # start with the expected sequence.  also apply all other filtering
+    # criteria.
+    args_adapt_fwd = []
+    for name, seq in adapters_fwd.items():
+        args_adapt_fwd += ["-a", f"{name}={seq}"]
+    args2 = args_common + args_adapt_fwd + [
         "--quality-cutoff", quality_cutoff,
         "--minimum-length", min_length,
         "-o", r1_out, "-p", r2_out, "-"]
@@ -195,20 +209,32 @@ def _run_cutadapt_pair(args1, args2):
             LOGGER.critical("cutadapt proc 2 exited with code %s", proc2.returncode)
             raise util.IgSeqError("cutadapt crashed")
 
-def get_adapter_fwd(sample, species):
+def get_adapters_fwd(sample, species=None):
     """Get the adapter sequence to trim off the end of R1.
+
+    Returns a dictionary of all applicable options, with adapter names as keys
+    as sequences as values.  If species is specified and chain type is given
+    via the Type key of the sample dictionary, this will just be a single name
+    for a single adapter sequence, like {"rhesus_gamma": "..."}.
+
     sample: dictionary of sample attributes
+    species: species name from the 
     """
     # The PCR primer specific to the antibody type occurs just *after* the
     # beginning of R2 (in the 3' direction, that is), so we'll trim that off
     # the end of R1.
-    for row in util.PRIMERS:
-        if row["Species"] == species and row["Type"] == sample["Type"]:
-            adapter = row["Seq"]
-            break
-    else:
-        raise ValueError("Unknown antibody type %s" % sample["Type"])
-    return util.revcmp(adapter)
+    chain_type = sample.get("Type")
+    options = [row for row in util.PRIMERS if not chain_type or row["Type"] == chain_type]
+    if not options:
+        raise util.IgSeqError(f"Unknown antibody chain type {chain_type}")
+    matches = {}
+    for row in options:
+        if species is None or row["Species"] == species:
+            key = row["Species"] + "_" + row["Type"]
+            matches[key] = util.revcmp(row["Seq"])
+    if not matches:
+        raise util.IgSeqError(f"Unknown species {species}")
+    return matches
 
 def get_adapter_rev(sample):
     """Get the adapter sequence to trim off the end of R2.
@@ -233,9 +259,9 @@ def _count_cutadapt_reads(json_path_1, json_path_2):
     read counts.
     """
 
-    with open(json_path_1) as f_in:
+    with open(json_path_1, encoding="UTF8") as f_in:
         report1 = json.load(f_in)
-    with open(json_path_2) as f_in:
+    with open(json_path_2, encoding="UTF8") as f_in:
         report2 = json.load(f_in)
     cts1 = report1["read_counts"]
     cts2 = report2["read_counts"]
