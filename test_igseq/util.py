@@ -168,6 +168,16 @@ class TestBase(unittest.TestCase):
         """Assert that the contents of the two text files are identical."""
         self.__compare_files(path1, path2, open)
 
+    def assertEmpty(self, path):
+        """Assert that the (maybe gzipped) text file is empty."""
+        path = Path(path)
+        if path.suffix.lower() == ".gz":
+            opener = gzip.open
+        else:
+            opener = open
+        with opener(path, "rt") as f_in:
+            self.assertEqual(f_in.read(), "")
+
     def __compare_files(self, path1, path2, opener):
         with opener(path1, "rt") as f1_in, opener(path2, "rt") as f2_in:
             contents1 = f1_in.read()

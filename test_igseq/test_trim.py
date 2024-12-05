@@ -94,9 +94,6 @@ class TestTrimLive(TestBase, TestLive):
         with TemporaryDirectory() as temp:
             trim([self.path/"input/run"], self.path/"samples.csv", dir_out=temp)
             files = sorted([p.name for p in Path(temp).glob("*")])
-            #import shutil
-            #for path in files:
-            #    shutil.copy(Path(temp)/path, ".")
             files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
             self.assertEqual(files_expected, files)
             for path in files_expected:
@@ -122,6 +119,19 @@ class TestTrimLive(TestBase, TestLive):
                             self.path/"output"/path)
                 if path.endswith(".counts.csv"):
                     self.assertTxtsMatch(Path(temp)/path, self.path/"output"/path)
+
+    def test_trim_custom_args(self):
+        """Test giving custom cutadapt arguments"""
+        with TemporaryDirectory() as temp:
+            temp = Path(temp)
+            trim([
+                self.path/"input/run/sample1.R1.fastq.gz",
+                self.path/"input/run/sample1.R2.fastq.gz"],
+                self.path/"samples.csv", dir_out=temp,
+                extra_cutadapt_args=["--too-short-output", temp/"short.fastq.gz"])
+            # there actually should be no too-short sequences, but, the file
+            # should still be created (even though empty)
+            self.assertEmpty(temp/"short.fastq.gz")
 
 class TestTrimLiveNoChainType(TestBase, TestLive):
     """Test trimming without specifying chain type (for the constant region primer).

@@ -14,6 +14,10 @@ The R2 adapter to trim from R1 is whatever constant region primers are
 applicable based on the supplied sample metadata and specified species.  If no
 species is specified and/or no chain type is specified via the sample metadata,
 it will recognize all primers that could be applicable.
+
+Any command-line arguments not recognized here are passed as-is to the
+cutadapt command, like the igblast command allows.  See cutadapt --help for
+those options.
 """
 
 import re
@@ -38,7 +42,8 @@ DEFAULTS = {
 # https://cutadapt.readthedocs.io/en/stable/algorithms.html#quality-trimming-algorithm
 def trim(
     paths_input, path_samples, dir_out="", path_counts="", *,
-    species=DEFAULTS["species"], sample_name=None, dry_run=False, **kwargs):
+    species=DEFAULTS["species"], extra_cutadapt_args=None, sample_name=None, dry_run=False,
+    **kwargs):
     """Trim sample-specific adapter sequences from one or more file pairs.
 
     paths_input: list of paths to demultiplexed samples (one directory or a
@@ -51,8 +56,10 @@ def trim(
     species: species name, for choosing appropriate constant region primer
              sequence
     sample_name: explicit sample name (default: infer from filenames)
+    extra_cutadapt_args: optional list of command-line arguments to include in
+                         the second cutadapt call
     dry_run: If True, don't actually call any commands or write any files.
-    kwargs: additional keyword arguments for cutadapt()
+    kwargs: additional keyword arguments for trim_pair()
     """
 
     samples = util.load_samples(path_samples)
@@ -104,6 +111,7 @@ def trim(
     LOGGER.info("output dir: %s", dir_out)
     LOGGER.info("output counts: %s", path_counts)
     LOGGER.info("5PIIA seq: %s", util.ANCHOR5P)
+    LOGGER.info("extra cutadapt arguments: %s", extra_cutadapt_args)
     if not dry_run:
         dir_out.mkdir(parents=True, exist_ok=True)
     for pair in pairs:
@@ -139,6 +147,7 @@ def trim(
                 adapters_fwd_lnk, adapter_rev,
                 discard_untrimmed = True,
                 quiet=quiet,
+                extra_cutadapt_args=extra_cutadapt_args,
                 **kwargs)
             if pair["path_counts"]:
                 cts= _count_cutadapt_reads(pair["JSON_out_1"], pair["JSON_out_2"])
@@ -147,7 +156,7 @@ def trim(
                 util.save_counts(pair["path_counts"], cts)
 
 def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, adapter_rev,
-    discard_untrimmed=True,
+    *, extra_cutadapt_args=None, discard_untrimmed=True,
     min_length=DEFAULTS["min_length"],
     quality_cutoff=DEFAULTS["quality_cutoff"],
     threads=1, quiet=True):
@@ -166,6 +175,8 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, 
     adapters_fwd: Dictionary of sequences to trim from 3' end of R1 (for -a
                   arguments)
     adapter_rev: Sequence to trim from 3' end of R2 (for -A argument)
+    extra_cutadapt_args: list of additional arguments to pass to the second
+                         cutadapt call
     discard_untrimmed: should reads without required adapters found be
                        discarded?
     """
@@ -192,6 +203,8 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, 
         args2.append("--discard-untrimmed")
     if json2_out:
         args2.extend(["--json", json2_out])
+    if extra_cutadapt_args:
+        args2.extend(extra_cutadapt_args)
     args2 = [str(arg) for arg in args2]
     _run_cutadapt_pair(args1, args2)
 
