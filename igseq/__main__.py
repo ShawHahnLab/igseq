@@ -81,7 +81,7 @@ def main(arglist=None):
                 # If there were unparsed arguments, see if we're in one of the
                 # commands that can take extra pass-through arguments.  If so
                 # pass them along, but if not, error out.
-                if args.func in [_main_igblast, _main_getreads]:
+                if args.func in [_main_igblast, _main_getreads, _main_trim]:
                     args.func(args, args_extra)
                 else:
                     parser.parse_args(args_extra)
@@ -146,7 +146,7 @@ def _main_phix(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
-def _main_trim(args):
+def _main_trim(args, extra_cutadapt_args=None):
     if args.no_counts:
         args.countsfile = None
     trim.trim(
@@ -158,6 +158,7 @@ def _main_trim(args):
         sample_name=args.sample_name,
         min_length=args.min_length,
         quality_cutoff=args.quality_cutoff,
+        extra_cutadapt_args=extra_cutadapt_args,
         dry_run=args.dry_run,
         threads=args.threads)
 
