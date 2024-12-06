@@ -158,6 +158,8 @@ def _main_trim(args, extra_cutadapt_args=None):
         sample_name=args.sample_name,
         min_length=args.min_length,
         quality_cutoff=args.quality_cutoff,
+        custom_adapter_fwd=args.adapter_fwd,
+        custom_adapter_rev=args.adapter_rev,
         extra_cutadapt_args=extra_cutadapt_args,
         dry_run=args.dry_run,
         threads=args.threads)
@@ -410,6 +412,15 @@ def __setup_arg_parser():
         help="species to use for selecting appropriate primer sequences (human or rhesus)")
     p_trim.add_argument("--sample-name",
         help="use this sample name rather than inferring from filenames")
+    p_trim.add_argument("-F", "--adapter-fwd", help="custom adapter for all forward reads.  "
+            "This is shared across all samples, if applicable, and does not automatically "
+            "include the anchored universal primer sequence that is usually included by "
+            "default.  The automatic case filters out all reads that are missing the "
+            "universal primer sequence; this is only applied for a custom forward adapter "
+            "if it starts with a \"^\" character (implying an anchored linked primer in "
+            "cutadapt syntax).")
+    p_trim.add_argument("-R", "--adapter-rev", help="custom adapter for all reverse reads.  "
+            "This is shared across all samples, if applicable.")
     p_trim.add_argument("--min-length", type=int, default=trim.DEFAULTS["min_length"],
         help="minimum length setting passed to cutadapt "
         f"(default: {trim.DEFAULTS['min_length']})")

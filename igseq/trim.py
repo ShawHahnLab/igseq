@@ -5,15 +5,16 @@ By default this will remove any instances of the R2 adapter found toward the
 end of R1 and the R1 adapter found toward the end of R2.  It will also insist
 that the 5' RACE Anchor be found at the start of R1, discarding read pairs that
 are missing the anchor.  The adapter sequences will be determined from the
-barcodes used for each sample and the selected species.
+barcodes used for each sample and the selected species.  If a custom forward
+barcode is supplied, the discarding behavior is only applied if the barcode
+sequence begins with a "^" (using cutadapt's anchor notation).
 
 The R1 adapter to trim from R2 is the forward barcode sequence at the start of
-R1 and the constant P5 sequence just upstream of that.
-
-The R2 adapter to trim from R1 is whatever constant region primers are
-applicable based on the supplied sample metadata and specified species.  If no
-species is specified and/or no chain type is specified via the sample metadata,
-it will recognize all primers that could be applicable.
+R1 and the constant P5 sequence just upstream of that.  The R2 adapter to trim
+from R1 is whatever constant region primers are applicable based on the
+supplied sample metadata and specified species.  If no species is specified
+and/or no chain type is specified via the sample metadata, it will recognize
+all primers that could be applicable.
 
 Any command-line arguments not recognized here are passed as-is to the
 cutadapt command, like the igblast command allows.  See cutadapt --help for
@@ -42,8 +43,8 @@ DEFAULTS = {
 # https://cutadapt.readthedocs.io/en/stable/algorithms.html#quality-trimming-algorithm
 def trim(
     paths_input, path_samples, dir_out="", path_counts="", *,
-    species=DEFAULTS["species"], extra_cutadapt_args=None, sample_name=None, dry_run=False,
-    **kwargs):
+    species=DEFAULTS["species"], custom_adapter_fwd=None, custom_adapter_rev=None,
+    extra_cutadapt_args=None, sample_name=None, dry_run=False, **kwargs):
     """Trim sample-specific adapter sequences from one or more file pairs.
 
     paths_input: list of paths to demultiplexed samples (one directory or a
@@ -56,6 +57,10 @@ def trim(
     species: species name, for choosing appropriate constant region primer
              sequence
     sample_name: explicit sample name (default: infer from filenames)
+    csutom_adapter_fwd: custom adapter sequence to trim from the 3' end of the
+                        forward reads (default: infer from metadata)
+    custom_adapter_rev: custom adapter sequence to trim from the 3' end of the
+                        reverse reads (default: infer from metadata)
     extra_cutadapt_args: optional list of command-line arguments to include in
                          the second cutadapt call
     dry_run: If True, don't actually call any commands or write any files.
@@ -112,13 +117,23 @@ def trim(
     LOGGER.info("output counts: %s", path_counts)
     LOGGER.info("5PIIA seq: %s", util.ANCHOR5P)
     LOGGER.info("extra cutadapt arguments: %s", extra_cutadapt_args)
+    LOGGER.info("Custom forward adapter: %s", custom_adapter_fwd)
+    LOGGER.info("Custom reverse adapter: %s", custom_adapter_rev)
+    if not extra_cutadapt_args:
+        extra_cutadapt_args = []
     if not dry_run:
         dir_out.mkdir(parents=True, exist_ok=True)
     for pair in pairs:
         # what sample attributes go with this file pair?
         sample = [samp for samp in samples.values() if samp["Sample"] == pair["sample_name"]][0]
-        adapters_fwd = get_adapters_fwd(sample, species)
-        adapter_rev = get_adapter_rev(sample)
+        if custom_adapter_fwd:
+            adapters_fwd = {"custom": custom_adapter_fwd}
+        else:
+            adapters_fwd = get_adapters_fwd(sample, species)
+        if custom_adapter_rev:
+            adapter_rev = custom_adapter_rev
+        else:
+            adapter_rev = get_adapter_rev(sample)
         samp = pair["sample_name"]
         LOGGER.info("sample %s: Fwd Adapter: %s", samp, adapters_fwd)
         LOGGER.info("sample %s: Rev Adapter: %s", samp, adapter_rev)
@@ -134,18 +149,28 @@ def trim(
         # not quiet if we're at a more verbose log level (in effect this means
         # we'd have to be at DEBUG to get quiet=False)
         quiet = logging.getLogger().getEffectiveLevel() >= logging.INFO
-        # combine 5PIIA and forward adapter(s) to get the sequence cutadapt
-        # will expect at the start and end of R1, respectively.  5PIIA will be
-        # anchored so it is implicitly requred.  The other sequence, on the 3'
-        # end, may or may not be found.
-        adapters_fwd_lnk = {
-            f"race_anchor_and_{k}": f"^{util.ANCHOR5P}...{v}" for k, v in adapters_fwd.items()}
+        if custom_adapter_fwd:
+            # if a custom adapter was specified just keep that as-is, without
+            # assuming we should prepend an anchored primer sequence
+            adapters_fwd_lnk = adapters_fwd
+        else:
+            # combine 5PIIA and forward adapter(s) to get the sequence cutadapt
+            # will expect at the start and end of R1, respectively.  5PIIA will
+            # be anchored so it is implicitly required.  The other sequence, on
+            # the 3' end, may or may not be found.
+            adapters_fwd_lnk = {
+                f"race_anchor_and_{k}": f"^{util.ANCHOR5P}...{v}" for k, v in adapters_fwd.items()}
+        # If the forward adapter is anchored (as it always is unless a custom
+        # forward adapter is given), discard untrimmed reads.  Make sure that's
+        # not already specified in the arguments, though.
+        if "^" in {adapter[0] for adapter in adapters_fwd_lnk.values()}:
+            if not set(("--discard-untrimmed", "--trim-only")) & set(extra_cutadapt_args):
+                extra_cutadapt_args.append("--discard-untrimmed")
         if not dry_run:
             trim_pair(
                 pair["R1"], pair["R2"], pair["R1_out"], pair["R2_out"],
                 pair["JSON_out_1"], pair["JSON_out_2"],
                 adapters_fwd_lnk, adapter_rev,
-                discard_untrimmed = True,
                 quiet=quiet,
                 extra_cutadapt_args=extra_cutadapt_args,
                 **kwargs)
@@ -156,7 +181,7 @@ def trim(
                 util.save_counts(pair["path_counts"], cts)
 
 def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, adapter_rev,
-    *, extra_cutadapt_args=None, discard_untrimmed=True,
+    *, extra_cutadapt_args=None,
     min_length=DEFAULTS["min_length"],
     quality_cutoff=DEFAULTS["quality_cutoff"],
     threads=1, quiet=True):
@@ -177,21 +202,19 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, 
     adapter_rev: Sequence to trim from 3' end of R2 (for -A argument)
     extra_cutadapt_args: list of additional arguments to pass to the second
                          cutadapt call
-    discard_untrimmed: should reads without required adapters found be
-                       discarded?
     """
     # arguments shared by both cutadapt commands
     args_common = [CUTADAPT, "--interleaved", "--cores", threads]
     if quiet:
         args_common.append("--quiet")
-    # first command: trim R2 adapter and interleave
-    args1 = args_common + ["-A", adapter_rev, r1_in, r2_in]
+    # first command: trim R2 adapter and interleave to standard output
+    args1 = args_common + ["-A", adapter_rev, r1_in, r2_in, "-o", "-"]
     if json1_out:
         args1.extend(["--json", json1_out])
     args1 = [str(arg) for arg in args1]
-    # second command: trim linked R1 adapter(s) and filter those that don't
-    # start with the expected sequence.  also apply all other filtering
-    # criteria.
+    # second command: take interleaved reads on standard input, trim linked R1
+    # adapter(s), and filter those that don't start with the expected sequence.
+    # Also apply all other filtering criteria.
     args_adapt_fwd = []
     for name, seq in adapters_fwd.items():
         args_adapt_fwd += ["-a", f"{name}={seq}"]
@@ -199,8 +222,6 @@ def trim_pair(r1_in, r2_in, r1_out, r2_out, json1_out, json2_out, adapters_fwd, 
         "--quality-cutoff", quality_cutoff,
         "--minimum-length", min_length,
         "-o", r1_out, "-p", r2_out, "-"]
-    if discard_untrimmed:
-        args2.append("--discard-untrimmed")
     if json2_out:
         args2.extend(["--json", json2_out])
     if extra_cutadapt_args:
@@ -278,11 +299,13 @@ def _count_cutadapt_reads(json_path_1, json_path_2):
         report2 = json.load(f_in)
     cts1 = report1["read_counts"]
     cts2 = report2["read_counts"]
+    # If I don't give --discard-untrimmed, the JSON has "null" instead of "0",
+    # so I'll just interpret those cases as 0.
     output = {
-        "input": cts1["input"],
-        "output": cts2["output"],
-        "too_short": cts2["filtered"]["too_short"],
-        "discard_untrimmed": cts2["filtered"]["discard_untrimmed"],
-        "read1_with_adapter": cts2["read1_with_adapter"],
-        "read2_with_adapter": cts1["read2_with_adapter"]}
+        "input": cts1["input"] or 0,
+        "output": cts2["output"] or 0,
+        "too_short": cts2["filtered"]["too_short"] or 0,
+        "discard_untrimmed": cts2["filtered"]["discard_untrimmed"] or 0,
+        "read1_with_adapter": cts2["read1_with_adapter"] or 0,
+        "read2_with_adapter": cts1["read2_with_adapter"] or 0}
     return output
