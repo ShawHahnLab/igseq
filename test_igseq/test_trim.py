@@ -4,7 +4,23 @@ from igseq.trim import trim, get_adapters_fwd, get_adapter_rev
 from igseq.util import IgSeqError
 from .util import TestBase, TestLive
 
-class TestTrim(TestBase):
+class TestTrimHelper(TestBase):
+    """Helper functions for the actual trimming-related tests"""
+
+    def check_trim_output(self, dir_obs, dir_exp):
+        """Check that an observed trim output dir matches an expected dir"""
+        dir_obs = Path(dir_obs)
+        dir_exp = Path(dir_exp)
+        files = sorted([p.name for p in dir_obs.glob("*")])
+        files_expected = sorted([p.name for p in dir_exp.glob("*")])
+        self.assertEqual(files_expected, files)
+        for path in files_expected:
+            if path.endswith(".gz"):
+                self.assertGzipsMatch(dir_obs/path, dir_exp/path)
+            if path.endswith(".counts.csv"):
+                self.assertTxtsMatch(dir_obs/path, dir_exp/path)
+
+class TestTrim(TestTrimHelper):
     """Basic tests of trim-related functions"""
 
     def setUp(self):
@@ -72,7 +88,7 @@ class TestTrim(TestBase):
         """Test the lower-level single-sample trim_pair() function"""
         self.skipTest("not yet implemented")
 
-class TestTrimLive(TestBase, TestLive):
+class TestTrimLive(TestTrimHelper, TestLive):
     """Basic tests of trim with actual cutadapt.
 
     Here we have a simple case with two sample with perfect adapters in R1 and
@@ -93,14 +109,7 @@ class TestTrimLive(TestBase, TestLive):
         """Test that adapters are trimmed from R1 and R2 pairs with dir input."""
         with TemporaryDirectory() as temp:
             trim([self.path/"input/run"], self.path/"samples.csv", dir_out=temp)
-            files = sorted([p.name for p in Path(temp).glob("*")])
-            files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
-            self.assertEqual(files_expected, files)
-            for path in files_expected:
-                if path.endswith(".gz"):
-                    self.assertGzipsMatch(Path(temp)/path, self.path/"output"/path)
-                if path.endswith(".counts.csv"):
-                    self.assertTxtsMatch(Path(temp)/path, self.path/"output"/path)
+            self.check_trim_output(temp, self.path/"output")
 
     def test_trim_file_input(self):
         """Test that adapters are trimmed from R1 and R2 pairs with file input."""
@@ -110,15 +119,7 @@ class TestTrimLive(TestBase, TestLive):
                     self.path/f"input/run/sample{idx}.R1.fastq.gz",
                     self.path/f"input/run/sample{idx}.R2.fastq.gz"],
                     self.path/"samples.csv", dir_out=temp)
-            files = sorted([p.name for p in Path(temp).glob("*")])
-            files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
-            self.assertEqual(files_expected, files)
-            for path in files_expected:
-                if path.endswith(".gz"):
-                    self.assertGzipsMatch(Path(temp)/path,
-                            self.path/"output"/path)
-                if path.endswith(".counts.csv"):
-                    self.assertTxtsMatch(Path(temp)/path, self.path/"output"/path)
+            self.check_trim_output(temp, self.path/"output")
 
     def test_trim_custom_args(self):
         """Test giving custom cutadapt arguments"""
@@ -133,7 +134,77 @@ class TestTrimLive(TestBase, TestLive):
             # should still be created (even though empty)
             self.assertEmpty(temp/"short.fastq.gz")
 
-class TestTrimLiveNoChainType(TestBase, TestLive):
+    def test_trim_custom_adapters(self):
+        """Test using custom adapters for trimming"""
+        with self.subTest(case="basic"):
+            # give the actual forward and reverse adapters appropriate for each
+            # sample (that should be what would have been used anyway) and
+            # check that the output is the same as we get from the other
+            # test_trim_... cases above
+            forwards = [
+                "^AAGCAGTGGTATCAACGCAGAGTACATGGG...TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+                "^AAGCAGTGGTATCAACGCAGAGTACATGGG...CACACAGAGCCCATCCGTCTTCCCCTTGACCCG",
+                "^AAGCAGTGGTATCAACGCAGAGTACATGGG...TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC",
+                "^AAGCAGTGGTATCAACGCAGAGTACATGGG...TCCACCAAGGGCCCATCGGTCTTCCCCCTGGC"]
+            reverses = [
+                "TAGTGGTTNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+                "TTAGAGTTNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+                "AGGGCCTTNNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA",
+                "GACATATTNNNNNNNAGATCGGAAGAGCGTCGTGTAGGGAAAGA"]
+            with TemporaryDirectory() as temp:
+                temp = Path(temp)
+                for idx in [1, 2, 3, 4]:
+                    trim([
+                        self.path/f"input/run/sample{idx}.R1.fastq.gz",
+                        self.path/f"input/run/sample{idx}.R2.fastq.gz"],
+                        self.path/"samples.csv", dir_out=temp,
+                        custom_adapter_fwd=forwards[idx-1],
+                        custom_adapter_rev=reverses[idx-1])
+                self.check_trim_output(temp, self.path/"output")
+        with self.subTest(case="custom"):
+            # using custom adapters for both forward and reverse, where the
+            # output should be different for all samples now.  Untrimmed reads
+            # will not be automatically filtered since the forward primer isn't
+            # anchored
+            with TemporaryDirectory() as temp:
+                temp = Path(temp)
+                for idx in [1, 2, 3, 4]:
+                    trim([
+                        self.path/f"input/run/sample{idx}.R1.fastq.gz",
+                        self.path/f"input/run/sample{idx}.R2.fastq.gz"],
+                        self.path/"samples.csv", dir_out=temp,
+                        # an arbitrary chunk near the end of sample 1 and 3's
+                        # R1s
+                        custom_adapter_fwd="GTGAAGGTTTACCGGCATTCAT",
+                        # a partial chunk of the P5 universal seq
+                        custom_adapter_rev="GTCGTGTAGGGAAAGA")
+                    self.assertNotInFile(temp/f"sample{idx}.cutadapt2.json", "--discard-untrimmed")
+                self.check_trim_output(temp, self.path/"output-custom-adapters")
+        with self.subTest(case="custom anchored"):
+            # using custom adapters for both forward and reverse, with the
+            # forward primer linked with the first part anchored to the start
+            # of the sequence.  In this case it should be interpreted as
+            # required, and untrimmed reads filtered out.
+            with TemporaryDirectory() as temp:
+                temp = Path(temp)
+                for idx in [1, 2, 3, 4]:
+                    trim([
+                        self.path/f"input/run/sample{idx}.R1.fastq.gz",
+                        self.path/f"input/run/sample{idx}.R2.fastq.gz"],
+                        self.path/"samples.csv", dir_out=temp,
+                        # anchored, but different from the default; includes a
+                        # bit of read1 and read4 so only these should be kept
+                        # (plus 20 random NT at the 3' adapter end that should
+                        # have no effect)
+                        custom_adapter_fwd=("^AAGCAGTGGTATCAACGCAGAGTACATGGGGAGGCTC"
+                            "...GACGGCCCTTTTCAAACCAA"),
+                        # a partial chunk of the P5 universal seq (same as the
+                        # previous case)
+                        custom_adapter_rev="GTCGTGTAGGGAAAGA")
+                    self.assertInFile(temp/f"sample{idx}.cutadapt2.json", "--discard-untrimmed")
+                self.check_trim_output(temp, self.path/"output-custom-adapters-anchored")
+
+class TestTrimLiveNoChainType(TestTrimHelper, TestLive):
     """Test trimming without specifying chain type (for the constant region primer).
 
     In this case cutadapt should fall back on using all applicable primer
@@ -147,14 +218,7 @@ class TestTrimLiveNoChainType(TestBase, TestLive):
         """Test that adapters are trimmed from R1 and R2 pairs with dir input."""
         with TemporaryDirectory() as temp:
             trim([self.path/"input/run"], self.path/"samples.csv", dir_out=temp)
-            files = sorted([p.name for p in Path(temp).glob("*")])
-            files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
-            self.assertEqual(files_expected, files)
-            for path in files_expected:
-                if path.endswith(".gz"):
-                    self.assertGzipsMatch(Path(temp)/path, self.path/"output"/path)
-                if path.endswith(".counts.csv"):
-                    self.assertTxtsMatch(Path(temp)/path, self.path/"output"/path)
+            self.check_trim_output(temp, self.path/"output")
 
     def test_trim_file_input(self):
         """Test that adapters are trimmed from R1 and R2 pairs with file input."""
@@ -164,12 +228,4 @@ class TestTrimLiveNoChainType(TestBase, TestLive):
                     self.path/f"input/run/sample{idx}.R1.fastq.gz",
                     self.path/f"input/run/sample{idx}.R2.fastq.gz"],
                     self.path/"samples.csv", dir_out=temp)
-            files = sorted([p.name for p in Path(temp).glob("*")])
-            files_expected = sorted([p.name for p in (self.path/"output").glob("*")])
-            self.assertEqual(files_expected, files)
-            for path in files_expected:
-                if path.endswith(".gz"):
-                    self.assertGzipsMatch(Path(temp)/path,
-                            self.path/"output"/path)
-                if path.endswith(".counts.csv"):
-                    self.assertTxtsMatch(Path(temp)/path, self.path/"output"/path)
+            self.check_trim_output(temp, self.path/"output")
