@@ -379,7 +379,7 @@ def __setup_arg_parser():
 
     __add_common_args(p_demux)
     p_demux.add_argument("-s", "--samples", required=True,
-        help="CSV of sample attributes")
+        help="CSV of sample attributes (see `igseq explain samples`)")
     p_demux.add_argument("-r", "--run",
         help="Run ID (default: parsed from input paths)")
     p_demux.add_argument("-o", "--outdir", default="",
@@ -409,7 +409,7 @@ def __setup_arg_parser():
 
     __add_common_args(p_trim)
     p_trim.add_argument("-s", "--samples", required=True,
-        help="CSV of sample attributes")
+        help="CSV of sample attributes (see `igseq explain samples`)")
     p_trim.add_argument("-o", "--outdir", default="",
         help="Output directory")
     p_trim.add_argument("-c", "--countsfile", default="",
