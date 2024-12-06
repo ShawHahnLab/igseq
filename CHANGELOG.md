@@ -1,6 +1,6 @@
 # Changelog
 
-## dev
+## 0.7.0rc1 - 2024-12-06
 
 ### Added
 
