@@ -22,6 +22,7 @@ from . import identity
 from . import msa
 from . import tree
 from . import show
+from . import explain
 from .util import IgSeqError
 from .version import __version__
 
@@ -179,6 +180,9 @@ def _main_show(args):
 
 def _main_list(args):
     show.list_files(text_items=args.text)
+
+def _main_explain(args):
+    explain.explain(keyword=args.keyword)
 
 def _main_igblast(args, extra_igblastn_args=None):
     colmap = args_to_colmap(args)
@@ -355,6 +359,10 @@ def __setup_arg_parser():
         help="list builtin reference data files",
         description=rewrap(show.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_explain = subps.add_parser("explain",
+        help="explain concepts used in multiple commands",
+        description=rewrap(explain.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 
     __add_common_args(p_get)
     p_get.add_argument("input", help="one Illumina run directory")
@@ -456,6 +464,11 @@ def __setup_arg_parser():
     __add_common_args(p_list)
     p_list.add_argument("text", nargs="*", help="partial filename to list")
     p_list.set_defaults(func=_main_list)
+
+    __add_common_args(p_explain)
+    p_explain.add_argument("keyword", nargs="?",
+        help="term to show explanation for")
+    p_explain.set_defaults(func=_main_explain)
 
     __add_common_args(p_igblast)
     p_igblast.add_argument("-Q", "--query", required=True,
