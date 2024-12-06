@@ -4,6 +4,7 @@
 
 ### Added
 
+ * `trim` now supports custom forward and/or reverse adapter sequences ([#88])
  * `trim` now supports passing additional command-line arguments through to
    cutadapt ([#87])
 
@@ -13,6 +14,7 @@
    in the samples CSV to be missing or blank, in which case any applicable
    adapter sequences will be used in the cutadapt commands ([#85])
 
+[#88]: https://github.com/ShawHahnLab/igseq/pull/88
 [#87]: https://github.com/ShawHahnLab/igseq/pull/87
 [#85]: https://github.com/ShawHahnLab/igseq/pull/85
 
