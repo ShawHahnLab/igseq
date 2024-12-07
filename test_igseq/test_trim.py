@@ -204,6 +204,20 @@ class TestTrimLive(TestTrimHelper, TestLive):
                     self.assertInFile(temp/f"sample{idx}.cutadapt2.json", "--discard-untrimmed")
                 self.check_trim_output(temp, self.path/"output-custom-adapters-anchored")
 
+    def test_trim_edge_case(self):
+        """Test an indel-related edge case that depends on particular cutadapt behavior"""
+        # This is an example of a read pair whose trimming output changes as of
+        # cutadapt 4.0.
+        #
+        # https://cutadapt.readthedocs.io/en/stable/changes.html#v4-0-2022-04-13
+        # https://cutadapt.readthedocs.io/en/stable/algorithms.html#algorithm-indel-scores
+        with TemporaryDirectory() as temp:
+            trim([
+                self.path/"input-edgecase/run/sample.R1.fastq.gz",
+                self.path/"input-edgecase/run/sample.R2.fastq.gz"],
+                self.path/"samples.edgecase.csv", dir_out=temp)
+            self.check_trim_output(temp, self.path/"output-edgecase")
+
 class TestTrimLiveNoChainType(TestTrimHelper, TestLive):
     """Test trimming without specifying chain type (for the constant region primer).
 
