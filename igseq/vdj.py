@@ -157,11 +157,17 @@ def combine_vdj(fastas_in, dir_out, csv_lookup_table=None, dry_run=False):
 
     attrs_list = []
     for fasta_in in fastas_in:
-        for record in SeqIO.parse(fasta_in, "fasta"):
-            attrs = parse_vdj_id(record.id)
-            attrs["path"] = fasta_in
-            attrs["seq"] = str(record.seq)
-            attrs_list.append(attrs)
+        # With BioPython 1.85 I get "ResourceWarning: unclosed file" in my test
+        # code if I use a string directly as input for SeqIO.parse, though I
+        # can't seem to catch it in the act of leaving files open in more
+        # simplified test scripts, so I'm not sure what's going on there.
+        # Giving file descriptors seems to work fine though.
+        with open(fasta_in, encoding="UTF8") as f_in:
+            for record in SeqIO.parse(f_in, "fasta"):
+                attrs = parse_vdj_id(record.id)
+                attrs["path"] = fasta_in
+                attrs["seq"] = str(record.seq)
+                attrs_list.append(attrs)
 
     # modify IDs where needed, using a lookup table from segments to FASTA
     # paths.  segments with multiple paths will get a suffix appended for each
