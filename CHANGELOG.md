@@ -18,9 +18,11 @@
 
 ### Fixed
 
+ * `igblast` no longer hangs with empty input ([#94])
  * `vdj-gather` can handle multiple input paths with sequences for the same
    segment (for example, IGHV sequences from two germline references) ([#93])
 
+[#94]: https://github.com/ShawHahnLab/igseq/pull/94
 [#93]: https://github.com/ShawHahnLab/igseq/pull/93
 [#89]: https://github.com/ShawHahnLab/igseq/pull/89
 [#88]: https://github.com/ShawHahnLab/igseq/pull/88
