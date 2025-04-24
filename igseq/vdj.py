@@ -237,7 +237,7 @@ def _make_seqid_suffix_lut(attrs_list):
                     ref = parents[-2]
                     suffix = f"{species}/{ref}"
                 else:
-                    suffix = hashlib.sha224(path.encode("ascii")).hexdigest()[:6]
+                    suffix = hashlib.sha224(str(path).encode("ascii")).hexdigest()[:6]
                 path_suffix_lut[path] = suffix
     return path_suffix_lut
 

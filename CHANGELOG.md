@@ -16,6 +16,12 @@
    in the samples CSV to be missing or blank, in which case any applicable
    adapter sequences will be used in the cutadapt commands ([#85])
 
+### Fixed
+
+ * `vdj-gather` can handle multiple input paths with sequences for the same
+   segment (for example, IGHV sequences from two germline references) ([#93])
+
+[#93]: https://github.com/ShawHahnLab/igseq/pull/93
 [#89]: https://github.com/ShawHahnLab/igseq/pull/89
 [#88]: https://github.com/ShawHahnLab/igseq/pull/88
 [#87]: https://github.com/ShawHahnLab/igseq/pull/87
