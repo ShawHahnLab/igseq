@@ -206,8 +206,9 @@ class TestCombineVDJMultiple(TestBase):
 
     def test_combine_vdj(self):
         # if germline segments in the input overlap between files (e.g. IGHV)
-        # it'll append a suffix to the seq IDs.
-        fastas = [self.path/"input/V.fasta", self.path/"input/V2.fasta"]
+        # it'll append a suffix to the seq IDs based on the path.
+        here = self.path.relative_to(Path.cwd())
+        fastas = [here/f"input/{x}.fasta" for x in ("V", "V2")]
         vdj.combine_vdj(fastas, self.tmp/"output")
         outputs_exp = sorted((self.path/"output").glob("*.*"))
         outputs_obs = sorted((self.tmp/"output").glob("*.*"))
