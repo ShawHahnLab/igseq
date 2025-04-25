@@ -1,6 +1,6 @@
+"""Tests for igseq.identity."""
+
 import unittest
-from tempfile import TemporaryDirectory
-from pathlib import Path
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from igseq.identity import identity, score_identity
@@ -13,32 +13,33 @@ class TestIdentity(TestBase):
     def test_identity(self):
         """Basic test of identity with FASTA inputs."""
         # Here a FASTA query and FASTA ref can give CSV output
-        with TemporaryDirectory() as tmpdir:
+        identity(
+            self.path/"input_query.fasta",
+            self.tmp/"output.csv",
+            self.path/"input_ref.fasta")
+        self.assertTxtsMatch(self.path/"output.csv", self.tmp/"output.csv")
+
+    def test_identity_colmap(self):
+        """Test identity with FASTA inputs but column names specified."""
+        # should warn if colmap given but not using tabular inputs
+        with self.assertLogs(level="WARNING"):
             identity(
                 self.path/"input_query.fasta",
-                Path(tmpdir)/"output.csv",
-                self.path/"input_ref.fasta")
-            self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
-            # should warn if colmap given but not using tabular inputs
-            with self.assertLogs(level="WARNING"):
-                identity(
-                    self.path/"input_query.fasta",
-                    Path(tmpdir)/"output.csv",
-                    self.path/"input_ref.fasta",
-                    colmap={"sequence": "sequence2"})
-                self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
+                self.tmp/"output.csv",
+                self.path/"input_ref.fasta",
+                colmap={"sequence": "sequence2"})
+            self.assertTxtsMatch(self.path/"output.csv", self.tmp/"output.csv")
 
     def test_identity_aa(self):
         """Test using amino acid sequences."""
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query_aa.fasta",
-                Path(tmpdir)/"output_aa.csv",
-                self.path/"input_ref_aa.fasta")
+        identity(
+            self.path/"input_query_aa.fasta",
+            self.tmp/"output_aa.csv",
+            self.path/"input_ref_aa.fasta")
 
     def test_identity_stdout(self):
         """Test writing output to stdout."""
-        with open(self.path/"output.csv") as f_in:
+        with open(self.path/"output.csv", encoding="ASCII") as f_in:
             stdout_expected = f_in.read()
         stdout, stderr = self.redirect_streams(
             lambda: identity(
@@ -50,40 +51,37 @@ class TestIdentity(TestBase):
 
     def test_identity_dryrun(self):
         """Test that dry run won't write an output file."""
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.fasta",
-                Path(tmpdir)/"output.csv",
-                self.path/"input_ref.fasta",
-                dry_run=True)
-            self.assertFalse((Path(tmpdir)/"output.scv").exists())
+        identity(
+            self.path/"input_query.fasta",
+            self.tmp/"output.csv",
+            self.path/"input_ref.fasta",
+            dry_run=True)
+        self.assertFalse((self.tmp/"output.csv").exists())
 
     def test_identity_single(self):
         """Identity with implicit ref via query."""
         # In this case the first record in the query will be used as the
         # reference.
-        with TemporaryDirectory() as tmpdir:
+        identity(
+            self.path/"input_query.fasta",
+            self.tmp/"output.csv")
+        self.assertTxtsMatch(self.path/"output_single.csv", self.tmp/"output.csv")
+        # should warn if ref format is specified but no ref path given
+        with self.assertLogs(level="WARNING"):
             identity(
                 self.path/"input_query.fasta",
-                Path(tmpdir)/"output.csv")
-            self.assertTxtsMatch(self.path/"output_single.csv", Path(tmpdir)/"output.csv")
-            # should warn if ref format is specified but no ref path given
-            with self.assertLogs(level="WARNING"):
-                identity(
-                    self.path/"input_query.fasta",
-                    Path(tmpdir)/"output.csv",
-                    fmt_in_ref="fa")
-            self.assertTxtsMatch(self.path/"output_single.csv", Path(tmpdir)/"output.csv")
+                self.tmp/"output.csv",
+                fmt_in_ref="fa")
+        self.assertTxtsMatch(self.path/"output_single.csv", self.tmp/"output.csv")
 
     def test_identity_csvgz_out(self):
         """Identity with csv.gz output."""
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.fasta",
-                Path(tmpdir)/"output.csv.gz",
-                self.path/"input_ref.fasta")
-            gunzip(Path(tmpdir)/"output.csv.gz")
-            self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
+        identity(
+            self.path/"input_query.fasta",
+            self.tmp/"output.csv.gz",
+            self.path/"input_ref.fasta")
+        gunzip(self.tmp/"output.csv.gz")
+        self.assertTxtsMatch(self.path/"output.csv", self.tmp/"output.csv")
 
 
 class TestIdentityTabular(TestBase):
@@ -94,42 +92,41 @@ class TestIdentityTabular(TestBase):
         # Here a CSV query and CSV ref can give CSV output
         # the defaults are the same as for convert() so sequence_id and
         # sequence columns will be used.
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.csv",
-                Path(tmpdir)/"output.csv",
-                self.path/"input_ref.csv")
-            self.assertTxtsMatch(self.path/"output.csv", Path(tmpdir)/"output.csv")
+        identity(
+            self.path/"input_query.csv",
+            self.tmp/"output.csv",
+            self.path/"input_ref.csv")
+        self.assertTxtsMatch(self.path/"output.csv", self.tmp/"output.csv")
 
-    def test_identity_columns(self):
-        """Test using different columns from input."""
+    def test_identity_columns_seq(self):
+        """Test using different columns from input (seq)."""
         # Here a CSV query and CSV ref can give CSV output.
         # The defaults are the same as for convert() so sequence_id and
         # sequence columns will be used unless overridden.
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.csv",
-                Path(tmpdir)/"output.csv",
-                self.path/"input_ref.csv",
-                colmap={"sequence": "sequence2"})
-            self.assertTxtsMatch(self.path/"output_col2.csv", Path(tmpdir)/"output.csv")
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.csv",
-                Path(tmpdir)/"output.csv",
-                self.path/"input_ref.csv",
-                colmap={"sequence_id": "sequence_id2"})
-            self.assertTxtsMatch(self.path/"output_col3.csv", Path(tmpdir)/"output.csv")
+        identity(
+            self.path/"input_query.csv",
+            self.tmp/"output.csv",
+            self.path/"input_ref.csv",
+            colmap={"sequence": "sequence2"})
+        self.assertTxtsMatch(self.path/"output_col2.csv", self.tmp/"output.csv")
+
+    def test_identity_columns_seqid(self):
+        """Test using different columns from input (seq ID)."""
+        identity(
+            self.path/"input_query.csv",
+            self.tmp/"output.csv",
+            self.path/"input_ref.csv",
+            colmap={"sequence_id": "sequence_id2"})
+        self.assertTxtsMatch(self.path/"output_col3.csv", self.tmp/"output.csv")
 
     def test_identity_single(self):
         """Identity with implicit ref via query."""
         # In this case the first record in the query will be used as the
         # reference.
-        with TemporaryDirectory() as tmpdir:
-            identity(
-                self.path/"input_query.csv",
-                Path(tmpdir)/"output.csv")
-            self.assertTxtsMatch(self.path/"output_single.csv", Path(tmpdir)/"output.csv")
+        identity(
+            self.path/"input_query.csv",
+            self.tmp/"output.csv")
+        self.assertTxtsMatch(self.path/"output_single.csv", self.tmp/"output.csv")
 
 
 class TestScoreIdentity(unittest.TestCase):
