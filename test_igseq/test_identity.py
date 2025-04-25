@@ -27,7 +27,7 @@ class TestIdentity(TestBase):
                 self.path/"input_query.fasta",
                 self.tmp/"output.csv",
                 self.path/"input_ref.fasta",
-                colmap={"sequence": "sequence2"})
+                colmap={"sequence_id": "sequence_id2", "sequence": "sequence2"})
             self.assertTxtsMatch(self.path/"output.csv", self.tmp/"output.csv")
 
     def test_identity_aa(self):
@@ -116,6 +116,15 @@ class TestIdentityTabular(TestBase):
             self.path/"input_query.csv",
             self.tmp/"output.csv",
             self.path/"input_ref.csv",
+            colmap={"sequence_id": "sequence_id2"})
+        self.assertTxtsMatch(self.path/"output_col3.csv", self.tmp/"output.csv")
+
+    def test_identity_columns_seqid_ref_fa(self):
+        """Test using different columns from input (seq ID, and FASTA for ref)."""
+        identity(
+            self.path/"input_query.csv",
+            self.tmp/"output.csv",
+            self.path/"input_ref_col3.fa",
             colmap={"sequence_id": "sequence_id2"})
         self.assertTxtsMatch(self.path/"output_col3.csv", self.tmp/"output.csv")
 
