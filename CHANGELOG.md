@@ -18,10 +18,13 @@
 
 ### Fixed
 
+ * `identity` now handles an optional alternate sequence ID column correctly
+   for the reference input file ([#95])
  * `igblast` no longer hangs with empty input ([#94])
  * `vdj-gather` can handle multiple input paths with sequences for the same
    segment (for example, IGHV sequences from two germline references) ([#93])
 
+[#95]: https://github.com/ShawHahnLab/igseq/pull/95
 [#94]: https://github.com/ShawHahnLab/igseq/pull/94
 [#93]: https://github.com/ShawHahnLab/igseq/pull/93
 [#89]: https://github.com/ShawHahnLab/igseq/pull/89
