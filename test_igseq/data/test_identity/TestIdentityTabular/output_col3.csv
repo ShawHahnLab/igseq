@@ -1,4 +1,4 @@
 query,ref,identity
-seqA,ref,1.0
-seqB,ref,0.8125
-seqC,ref,0.875
+seqA,reference,1.0
+seqB,reference,0.8125
+seqC,reference,0.875
