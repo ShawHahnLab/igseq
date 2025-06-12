@@ -146,8 +146,13 @@ class TestBase(unittest.TestCase):
 
     def tearDown(self):
         # adapted from https://stackoverflow.com/a/39606065
-        result = self.defaultTestResult()
-        self._feedErrorsToResult(result, self._outcome.errors)
+        if hasattr(self._outcome, "errors"):
+            # Python 3.4 - 3.10
+            result = self.defaultTestResult()
+            self._feedErrorsToResult(result, self._outcome.errors)
+        else:
+            # Python 3.11+
+            result = self._outcome.result
         if result.errors or result.failures:
             shutil.copytree(self.tmp, Path("/tmp/igseq-testdirs")/str(self.tmp).lstrip("/"))
         self.__tmp.cleanup()
