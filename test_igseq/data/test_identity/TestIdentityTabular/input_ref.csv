@@ -1,2 +1,2 @@
-sequence_id,sequence,sequence2
-ref,ACTGACTGACTACTGG,CCAGTAGTCAGTCAGT
+sequence_id,sequence_id2,sequence,sequence2
+ref,reference,ACTGACTGACTACTGG,CCAGTAGTCAGTCAGT

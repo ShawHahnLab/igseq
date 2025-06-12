@@ -8,19 +8,19 @@ sequences.  Your mileage may vary.
 
 ## Install
 
-First, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+First, install [mamba via Miniforge](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html).
 
 Then install from the latest version via <https://anaconda.org/ShawHahnLab/igseq>:
 
-    conda create --name igseq -c conda-forge -c bioconda -c ShawHahnLab igseq
-    conda activate igseq
+    mamba create --name igseq -c conda-forge -c bioconda -c ShawHahnLab igseq
+    mamba activate igseq
 
 Or, install from the latest source here:
 
     git clone https://github.com/ShawHahnLab/igseq.git
     cd igseq
-    conda env update --file igseq/data/environment.yml
-    conda activate igseq
+    mamba env update --file igseq/data/environment.yml
+    mamba activate igseq
     pip install .
 
 ## Some Instructions

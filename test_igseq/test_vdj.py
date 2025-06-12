@@ -189,6 +189,11 @@ class TestCombineVDJ(TestBase):
     def test_combine_vdj(self):
         # at the simplest this will just take one input FASTA and re-write it
         # to the output.
+        vdj.combine_vdj([self.path/"input/V.fasta"], self.tmp/"output")
+        self.assertFastasMatch(self.tmp/"output/V.fasta", self.path/"output/V.fasta")
+
+    def test_combine_vdj_by_attrs(self):
+        # same idea, for combine_vdj_by_attrs
         input_v = self.path/"input/V.fasta"
         attrs_list = [{
             "path": input_v, "segment": "V", "fasta": True, "type": "file"}]
@@ -197,9 +202,26 @@ class TestCombineVDJ(TestBase):
         self.assertTxtsMatch(fasta, self.path/"output/V.fasta")
 
 
-class TestCombineVDJWithInternal(TestBase):
+class TestCombineVDJMultiple(TestBase):
 
     def test_combine_vdj(self):
+        # if germline segments in the input overlap between files (e.g. IGHV)
+        # it'll append a suffix to the seq IDs based on the path.
+        here = self.path.relative_to(Path.cwd())
+        fastas = [here/f"input/{x}.fasta" for x in ("V", "V2")]
+        vdj.combine_vdj(fastas, self.tmp/"output")
+        outputs_exp = sorted((self.path/"output").glob("*.*"))
+        outputs_obs = sorted((self.tmp/"output").glob("*.*"))
+        self.assertEqual(
+            [path.relative_to(self.path) for path in outputs_exp],
+            [path.relative_to(self.tmp) for path in outputs_obs])
+        for output_exp, output_obs in zip(outputs_exp, outputs_obs):
+            self.assertTxtsMatch(output_exp, output_obs)
+
+
+class TestCombineVDJWithInternal(TestBase):
+
+    def test_combine_vdj_by_attrs(self):
         # a list of per-segment FASTAs should be combined into one, with a
         # suffix appended to each seq ID if needed to differentiate them.
         # I thought this seemed like a pragmatic way to do it but IgBLAST wants

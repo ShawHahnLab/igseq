@@ -22,6 +22,7 @@ from . import identity
 from . import msa
 from . import tree
 from . import show
+from . import explain
 from .util import IgSeqError
 from .version import __version__
 
@@ -81,7 +82,7 @@ def main(arglist=None):
                 # If there were unparsed arguments, see if we're in one of the
                 # commands that can take extra pass-through arguments.  If so
                 # pass them along, but if not, error out.
-                if args.func in [_main_igblast, _main_getreads]:
+                if args.func in [_main_igblast, _main_getreads, _main_trim]:
                     args.func(args, args_extra)
                 else:
                     parser.parse_args(args_extra)
@@ -146,7 +147,7 @@ def _main_phix(args):
         dry_run=args.dry_run,
         threads=args.threads)
 
-def _main_trim(args):
+def _main_trim(args, extra_cutadapt_args=None):
     if args.no_counts:
         args.countsfile = None
     trim.trim(
@@ -158,6 +159,9 @@ def _main_trim(args):
         sample_name=args.sample_name,
         min_length=args.min_length,
         quality_cutoff=args.quality_cutoff,
+        custom_adapter_fwd=args.adapter_fwd,
+        custom_adapter_rev=args.adapter_rev,
+        extra_cutadapt_args=extra_cutadapt_args,
         dry_run=args.dry_run,
         threads=args.threads)
 
@@ -176,6 +180,9 @@ def _main_show(args):
 
 def _main_list(args):
     show.list_files(text_items=args.text)
+
+def _main_explain(args):
+    explain.explain(keyword=args.keyword)
 
 def _main_igblast(args, extra_igblastn_args=None):
     colmap = args_to_colmap(args)
@@ -352,6 +359,10 @@ def __setup_arg_parser():
         help="list builtin reference data files",
         description=rewrap(show.__doc__),
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    p_explain = subps.add_parser("explain",
+        help="explain concepts used in multiple commands",
+        description=rewrap(explain.__doc__),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 
     __add_common_args(p_get)
     p_get.add_argument("input", help="one Illumina run directory")
@@ -368,7 +379,7 @@ def __setup_arg_parser():
 
     __add_common_args(p_demux)
     p_demux.add_argument("-s", "--samples", required=True,
-        help="CSV of sample attributes")
+        help="CSV of sample attributes (see `igseq explain samples`)")
     p_demux.add_argument("-r", "--run",
         help="Run ID (default: parsed from input paths)")
     p_demux.add_argument("-o", "--outdir", default="",
@@ -398,17 +409,26 @@ def __setup_arg_parser():
 
     __add_common_args(p_trim)
     p_trim.add_argument("-s", "--samples", required=True,
-        help="CSV of sample attributes")
+        help="CSV of sample attributes (see `igseq explain samples`)")
     p_trim.add_argument("-o", "--outdir", default="",
         help="Output directory")
     p_trim.add_argument("-c", "--countsfile", default="",
         help="file to write read counts to")
     p_trim.add_argument("--no-counts", action="store_true",
         help="don't write a counts file")
-    p_trim.add_argument("-S", "--species", required=True,
+    p_trim.add_argument("-S", "--species",
         help="species to use for selecting appropriate primer sequences (human or rhesus)")
     p_trim.add_argument("--sample-name",
         help="use this sample name rather than inferring from filenames")
+    p_trim.add_argument("-F", "--adapter-fwd", help="custom adapter for all forward reads.  "
+            "This is shared across all samples, if applicable, and does not automatically "
+            "include the anchored universal primer sequence that is usually included by "
+            "default.  The automatic case filters out all reads that are missing the "
+            "universal primer sequence; this is only applied for a custom forward adapter "
+            "if it starts with a \"^\" character (implying an anchored linked primer in "
+            "cutadapt syntax).")
+    p_trim.add_argument("-R", "--adapter-rev", help="custom adapter for all reverse reads.  "
+            "This is shared across all samples, if applicable.")
     p_trim.add_argument("--min-length", type=int, default=trim.DEFAULTS["min_length"],
         help="minimum length setting passed to cutadapt "
         f"(default: {trim.DEFAULTS['min_length']})")
@@ -444,6 +464,11 @@ def __setup_arg_parser():
     __add_common_args(p_list)
     p_list.add_argument("text", nargs="*", help="partial filename to list")
     p_list.set_defaults(func=_main_list)
+
+    __add_common_args(p_explain)
+    p_explain.add_argument("keyword", nargs="?",
+        help="term to show explanation for")
+    p_explain.set_defaults(func=_main_explain)
 
     __add_common_args(p_igblast)
     p_igblast.add_argument("-Q", "--query", required=True,

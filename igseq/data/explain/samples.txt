@@ -1,0 +1,29 @@
+CSV of sample metadata used in demux and trim
+
+The demux and trim commands use a common sample metadata CSV file.
+
+Columns used:
+
+    Sample      Sample name, unique for a given run
+    Run         Sequencing run identifier
+    BarcodeFwd  ID of forward barcode (see igseq show barcodes)
+    BarcodeRev  ID of reverse barcode (ditto)
+    Type        Constant region type (see igseq show primers)
+
+(Any other columns are ignored.) 
+
+The sample names are used during demultiplexing to control file output for
+reads with matching barcodes.  These are filtered to just the matching
+sequencing run according to the Run column (matching what's given on the
+command-line or inferred from input paths) but the sample names must be unique
+for that run.
+
+The barcodes are numbers that correspond to the built-in table of igseq barcode
+sequences.  The barcode sequences are used during demultiplexing, but
+additionally the forward barcode is used during adapter trimming as part of the
+sequence to remove from the end of R2.
+
+Type is used during adapter trimming to include the expected constant region
+sequence past the start of R2 as part of the sequence to trim from the end of
+R1.  If this column is missing or left blank any applicable sequence will be
+trimmed from the 3' end of R1 rather than just one (e.g., "gamma").

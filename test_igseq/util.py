@@ -166,12 +166,54 @@ class TestBase(unittest.TestCase):
 
     def assertTxtsMatch(self, path1, path2):
         """Assert that the contents of the two text files are identical."""
-        self.__compare_files(path1, path2, open)
+        self.__compare_files(path1, path2)
 
-    def __compare_files(self, path1, path2, opener):
+    def assertFastasMatch(self, path1, path2):
+        """Assert that the contents of the two FASTA files are identical (ignoring wrapping)."""
+        def reader(hndl):
+            return [(str(rec.id), str(rec.seq)) for rec in SeqIO.parse(hndl, "fasta")]
+        self.__compare_files(path1, path2, open, reader)
+
+    def assertEmpty(self, path):
+        """Assert that the (maybe gzipped) text file is empty."""
+        path = Path(path)
+        if path.suffix.lower() == ".gz":
+            opener = gzip.open
+        else:
+            opener = open
+        with opener(path, "rt") as f_in:
+            self.assertEqual(f_in.read(), "")
+
+    def assertInFile(self, path, txt):
+        """Assert that the (maybe gzipped) text file contains a particular string."""
+        path = Path(path)
+        if path.suffix.lower() == ".gz":
+            opener = gzip.open
+        else:
+            opener = open
+        with opener(path, "rt") as f_in:
+            for line in f_in:
+                if txt in line:
+                    break
+            else:
+                raise AssertionError(f"Text \"{txt}\" not found in {path}")
+
+    def assertNotInFile(self, path, txt):
+        """Like assertInFile but the opposite"""
+        path = Path(path)
+        if path.suffix.lower() == ".gz":
+            opener = gzip.open
+        else:
+            opener = open
+        with opener(path, "rt") as f_in:
+            for line in f_in:
+                if txt in line:
+                    raise AssertionError(f"Text \"{txt}\" found in {path}")
+
+    def __compare_files(self, path1, path2, opener=open, reader=lambda hndl: hndl.read()):
         with opener(path1, "rt") as f1_in, opener(path2, "rt") as f2_in:
-            contents1 = f1_in.read()
-            contents2 = f2_in.read()
+            contents1 = reader(f1_in)
+            contents2 = reader(f2_in)
             if contents1 != contents2:
                 raise AssertionError(f"mismatch between {path1} and {path2}")
 

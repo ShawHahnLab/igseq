@@ -59,7 +59,7 @@ def identity(path_in, path_out, path_ref=None, fmt_in=None, fmt_in_ref=None, col
                     ref[reader.colmap["sequence"]])
                 writer.write({
                     "query": record[reader.colmap["sequence_id"]],
-                    "ref": ref["sequence_id"],
+                    "ref": ref[reader.colmap["sequence_id"]],
                     "identity": score})
 
 def score_identity(seq1, seq2):

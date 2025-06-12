@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.7.0 - 2025-06-12
+
+### Added
+
+ * `explain` command to show help text for common concepts (starting with the
+   sample metadata CSV used by `demux` and `trim`) ([#89])
+ * `trim` now supports custom forward and/or reverse adapter sequences ([#88])
+ * `trim` now supports passing additional command-line arguments through to
+   cutadapt ([#87])
+
+### Changed
+
+ * `trim` now allows the species to be left unspecified and/or the Type column
+   in the samples CSV to be missing or blank, in which case any applicable
+   adapter sequences will be used in the cutadapt commands ([#85])
+
+### Fixed
+
+ * `identity` now handles an optional alternate sequence ID column correctly
+   for the reference input file ([#95])
+ * `igblast` no longer hangs with empty input ([#94])
+ * `vdj-gather` can handle multiple input paths with sequences for the same
+   segment (for example, IGHV sequences from two germline references) ([#93])
+
+[#95]: https://github.com/ShawHahnLab/igseq/pull/95
+[#94]: https://github.com/ShawHahnLab/igseq/pull/94
+[#93]: https://github.com/ShawHahnLab/igseq/pull/93
+[#89]: https://github.com/ShawHahnLab/igseq/pull/89
+[#88]: https://github.com/ShawHahnLab/igseq/pull/88
+[#87]: https://github.com/ShawHahnLab/igseq/pull/87
+[#85]: https://github.com/ShawHahnLab/igseq/pull/85
+
 ## 0.6.0 - 2024-08-23
 
 ### Added

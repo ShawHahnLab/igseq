@@ -192,6 +192,10 @@ def run_igblast(
                         for rec in reader:
                             stdin_started.set()
                             writer.write(rec)
+                        # Calling set() again here so that even if there were
+                        # actually no records in the input at all, we still can
+                        # move forward (see #90)
+                        stdin_started.set()
                 except BrokenPipeError:
                     pass
             except Exception as err:

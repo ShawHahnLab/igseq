@@ -1,0 +1,7 @@
+Category,Sample,Item,NumSeqs
+trim,sample3,input,1
+trim,sample3,output,1
+trim,sample3,too_short,0
+trim,sample3,discard_untrimmed,0
+trim,sample3,read1_with_adapter,1
+trim,sample3,read2_with_adapter,1
