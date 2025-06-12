@@ -1,0 +1,3 @@
+sequence_id,sequence_id_original,input_path
+IGHV1-70*01_af59ca,IGHV1-70*01,test_igseq/data/test_vdj/TestCombineVDJMultiple/input/V.fasta
+IGHV1-AGS*03_922131,IGHV1-AGS*03,test_igseq/data/test_vdj/TestCombineVDJMultiple/input/V2.fasta
