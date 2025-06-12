@@ -1,5 +1,16 @@
 # Changelog
 
+## dev
+
+### Changed
+
+ * `igblast` updated to 1.22 ([#98])
+ * Cutadapt (for `trim`) updated to version 5 ([#98]).  **NOTE: this will
+   result in very slightly different output from the trim command for the same
+   input, compared to previous igseq versions using Cutadapt 3.**
+
+[#98]: https://github.com/ShawHahnLab/igseq/pull/98
+
 ## 0.7.0 - 2025-06-12
 
 ### Added
