@@ -42,14 +42,14 @@ requirements:
   # installed automatically whenever the package is installed. Package names
   # should follow the package match specifications."
   run:
-    - python>=3.9.7,<4
-    - biopython>=1.80,<2
+    - python>=3.9.7,<3.13
+    - biopython>=1.82,<1.86
+    - cutadapt>=5.1,<6
+    - igblast=1.22
     - python-newick>=1.9,<2
     - bwa>=0.7.18,<0.8
     - samtools>=1.19,<2
-    - cutadapt>=3.7,<4
     - pear>=0.9.6,<1
-    - igblast>=1.21,<1.22
     - muscle>=5.1,<6
     - fasttree>=2.1,<3
 
