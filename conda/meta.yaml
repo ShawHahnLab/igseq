@@ -45,7 +45,7 @@ requirements:
     - python>=3.9.7,<3.13
     - biopython>=1.82,<1.86
     - cutadapt>=5.1,<6
-    - igblast=1.22
+    - igblast=1.21
     - python-newick>=1.9,<2
     - bwa>=0.7.18,<0.8
     - samtools>=1.19,<2
