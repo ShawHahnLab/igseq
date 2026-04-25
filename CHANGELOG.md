@@ -1,5 +1,18 @@
 # Changelog
 
+## dev
+
+### Changed
+
+ * Cutadapt (for `trim`) updated to version 5 ([#98]).
+ * Fasttree (for `tree`) updated to version 2.2 ([#98]).
+
+ **NOTE: these version updates will result in very slightly different output
+ from the trim and tree commands for the same inputs, compared to previous
+ igseq versions using Cutadapt 3 and Fasttree 2.1.**
+
+[#98]: https://github.com/ShawHahnLab/igseq/pull/98
+
 ## 0.7.0 - 2025-06-12
 
 ### Added
