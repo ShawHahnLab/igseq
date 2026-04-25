@@ -21,7 +21,7 @@ jobs:
               ~/miniconda3/bin/conda install -c conda-forge mamba --quiet
               source ~/miniconda3/bin/activate
               mamba create -n igseq
-              sed 's/^  - python>=.*/  - python=<< parameters.python-version >>/' igseq/data/environment.yml
+              sed 's/^  - python>=.*/  - python=<< parameters.python-version >>/' igseq/igseq/data/environment.yml
               mamba env update --file igseq/igseq/data/environment.yml --quiet --yes
             fi
           no_output_timeout: 20m
