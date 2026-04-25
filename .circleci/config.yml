@@ -20,7 +20,8 @@ jobs:
               bash Miniconda3-latest-Linux-x86_64.sh -b
               ~/miniconda3/bin/conda install -c conda-forge mamba --quiet
               source ~/miniconda3/bin/activate
-              mamba create -n igseq python=<< parameters.python-version >>
+              mamba create -n igseq
+              sed 's/^  - python>=.*/  - python=<< parameters.python-version >>/' igseq/data/environment.yml
               mamba env update --file igseq/igseq/data/environment.yml --quiet --yes
             fi
           no_output_timeout: 20m
@@ -75,4 +76,4 @@ workflows:
       - build:
           matrix:
             parameters:
-              python-version: ["3.10", "3.11", "3.12", "3.13"]
+              python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
