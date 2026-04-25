@@ -42,7 +42,7 @@ requirements:
   # installed automatically whenever the package is installed. Package names
   # should follow the package match specifications."
   run:
-    - python>=3.9.7,<3.13
+    - python>=3.10,<3.13
     - biopython>=1.82,<1.86
     - cutadapt>=5.1,<6
     - igblast=1.21
