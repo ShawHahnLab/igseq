@@ -1,6 +1,9 @@
 version: 2.1
 jobs:
   build:
+    parameters:
+      python-version:
+        type: string
     machine:
       image: default
     steps:
@@ -8,7 +11,7 @@ jobs:
           path: igseq
       - restore_cache:
           keys:
-            - cache-{{ checksum "igseq/igseq/data/environment.yml" }}
+            - cache-{{ checksum "igseq/igseq/data/environment.yml" }}-python<< parameters.python-version >>
       - run:
           name: Install Conda Environment
           command: |
@@ -17,13 +20,13 @@ jobs:
               bash Miniconda3-latest-Linux-x86_64.sh -b
               ~/miniconda3/bin/conda install -c conda-forge mamba --quiet
               source ~/miniconda3/bin/activate
-              mamba create -n igseq
+              mamba create -n igseq python=<< parameters.python-version >>
               mamba env update --file igseq/igseq/data/environment.yml --quiet --yes
             fi
           no_output_timeout: 20m
       - save_cache:
           paths: [ ~/miniconda3 ]
-          key: cache-{{ checksum "igseq/igseq/data/environment.yml" }}
+          key: cache-{{ checksum "igseq/igseq/data/environment.yml" }}-python<< parameters.python-version >>
       - run:
           name: Store conda env shell environment
           command: |
@@ -65,3 +68,11 @@ jobs:
           name: "Store Artifacts: igseq-testdirs"
           path: /tmp/igseq-testdirs
           destination: igseq-testdirs
+
+workflows:
+  main:
+    jobs:
+      - main:
+          matrix:
+            parameters:
+              python-version: ["3.10", "3.11", "3.12", "3.13"]
